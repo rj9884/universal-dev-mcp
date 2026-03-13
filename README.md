@@ -4,6 +4,74 @@ A universal MCP (Model Context Protocol) server that gives AI tools live access 
 
 ---
 
+## Table of contents
+
+- [How it works](#how-it-works)
+- [Available tools](#available-tools)
+- [Project structure](#project-structure)
+- [Installation](#installation)
+- [Configuration](#configuration)
+- [Connecting to Claude Desktop](#connecting-to-claude-desktop)
+- [Connecting to MCP-compatible editors](#connecting-to-mcp-compatible-editors)
+- [Connecting to Gemini / ChatGPT (HTTP mode)](#connecting-to-gemini--chatgpt-http-mode)
+- [Security](#security)
+- [npm scripts](#npm-scripts)
+- [Example prompts](#example-prompts)
+
+---
+
+## How it works
+
+universal-dev-mcp sits between your AI tool and your local dev environment. It exposes two transport layers depending on what your AI tool supports:
+
+```
+┌──────────────────────────────────────────────────────────────────┐
+│                           AI Tools                               │
+│                                                                  │
+│   ┌─────────────────────────┐    ┌────────────────────────────┐  │
+│   │  Claude Desktop         │    │  Gemini  │  ChatGPT  │ etc │  │
+│   │  Cursor / Windsurf / Zed│    └────────────────────────────┘  │
+│   │  any MCP-compatible tool│              │                     │
+│   └────────────┬────────────┘              │ HTTP + SSE          │
+│                │ MCP stdio (JSON-RPC)       │ localhost:3333      │
+└────────────────┼──────────────────────────-┼────────────────────-┘
+                 │                            │
+       ┌─────────▼──────────┐      ┌──────────▼─────────┐
+       │    server.ts        │      │   http-server.ts    │
+       │    (stdio mode)     │      │   (HTTP/SSE mode)   │
+       └─────────┬───────────┘      └──────────┬──────────┘
+                 └──────────────┬───────────────┘
+                                │
+                    ┌───────────▼───────────┐
+                    │       9 MCP Tools      │
+                    │                        │
+                    │  get_project_info      │
+                    │  check_port            │
+                    │  view_page             │
+                    │  get_api_response      │
+                    │  read_file             │
+                    │  edit_file             │
+                    │  patch_file            │
+                    │  list_files            │
+                    │  run_command           │
+                    └───────────┬───────────┘
+                                │  allowlist guards + auto-backup
+                                │
+               ┌────────────────▼────────────────┐
+               │      Your local dev project      │
+               │      localhost:5173 / :3000      │
+               │      src/  package.json  etc.    │
+               └─────────────────────────────────-┘
+```
+
+**MCP stdio** (`server.ts`) — used by editors that support MCP natively (Claude Desktop, Cursor, Windsurf, Zed). The editor spawns the server as a child process and communicates over stdin/stdout.
+
+**HTTP/SSE** (`http-server.ts`) — used by tools that don't support MCP stdio. Exposes a REST API and an OpenAI-compatible tool-calling interface so any HTTP client can call the same 9 tools.
+
+All tool calls go through the same security layer regardless of transport: port allowlist, command allowlist, write directory scope, and automatic file backups.
+
+---
+
 ## Available tools
 
 | Tool | Description |
@@ -151,24 +219,75 @@ curl -X POST http://localhost:3333/call \
   -d '{"name": "get_project_info", "arguments": {}}'
 ```
 
-### Example: Gemini integration (Python)
+### Example: Gemini integration (TypeScript)
 
-```python
-import requests
+```typescript
+import { GoogleGenerativeAI } from "@google/generative-ai";
 
-# Get tools in OpenAI format (Gemini accepts the same schema)
-tools = requests.get("http://localhost:3333/openai/tools").json()["tools"]
+const MCP_URL = "http://localhost:3333";
 
-# After Gemini returns a function call, execute it:
-result = requests.post("http://localhost:3333/openai/call", json={
-    "tool_calls": [{
-        "id": "call_1",
-        "function": {
-            "name": "view_page",
-            "arguments": '{"port": 5173, "path": "/"}'
-        }
-    }]
-}).json()
+// Fetch tools from the MCP server in OpenAI format (Gemini accepts the same schema)
+async function getMcpTools() {
+  const res = await fetch(`${MCP_URL}/openai/tools`);
+  const { tools } = await res.json();
+  return tools;
+}
+
+// Execute a tool call returned by Gemini
+async function callMcpTool(name: string, args: Record<string, unknown>): Promise<string> {
+  const res = await fetch(`${MCP_URL}/openai/call`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      tool_calls: [
+        {
+          id: "call_1",
+          function: {
+            name,
+            arguments: JSON.stringify(args),
+          },
+        },
+      ],
+    }),
+  });
+  const { tool_results } = await res.json();
+  return tool_results[0].content;
+}
+
+async function main() {
+  const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY!);
+  const tools = await getMcpTools();
+
+  const model = genAI.getGenerativeModel({
+    model: "gemini-1.5-pro",
+    tools: [{ functionDeclarations: tools.map((t: any) => t.function) }],
+  });
+
+  const chat = model.startChat();
+
+  // Ask Gemini to inspect your project
+  let result = await chat.sendMessage("Get an overview of my project.");
+
+  // Handle tool calls until Gemini returns a final text response
+  while (result.response.functionCalls()?.length) {
+    const toolResponses = await Promise.all(
+      result.response.functionCalls()!.map(async (call) => {
+        const output = await callMcpTool(call.name, call.args as Record<string, unknown>);
+        return {
+          functionResponse: {
+            name: call.name,
+            response: { result: output },
+          },
+        };
+      })
+    );
+    result = await chat.sendMessage(toolResponses);
+  }
+
+  console.log(result.response.text());
+}
+
+main();
 ```
 
 ---
