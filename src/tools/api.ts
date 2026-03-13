@@ -4,10 +4,11 @@ import { httpRequest } from "../utils/fetch.js";
 import { isPortAllowed, allowedPortsLabel } from "../utils/security.js";
 
 export function registerApiTools(server: McpServer): void {
-  server.tool(
+  server.registerTool(
     "get_api_response",
-    "Make an HTTP request to an API endpoint on a local dev server and return the full response. Supports all standard HTTP methods and an optional JSON request body. Useful for testing REST APIs, checking response shapes, and verifying status codes.",
     {
+    description: "Make an HTTP request to an API endpoint on a local dev server and return the full response. Supports all standard HTTP methods and an optional JSON request body. Useful for testing REST APIs, checking response shapes, and verifying status codes.",
+    inputSchema: {
       port: z
         .number()
         .describe("The localhost port the API server is running on"),
@@ -29,6 +30,7 @@ export function registerApiTools(server: McpServer): void {
         .describe(
           'Additional headers as a JSON string, e.g. \'{"Authorization":"Bearer token"}\''
         ),
+    },
     },
     async ({ port, path: apiPath, method, body, custom_headers }) => {
       if (!isPortAllowed(port)) {

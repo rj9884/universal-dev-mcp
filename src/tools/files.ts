@@ -10,10 +10,11 @@ import { getFileTree, resolveProjectPath, toRelativePath } from "../utils/fs.js"
 const MAX_FILE_SIZE_BYTES = 1_000_000; // 1 MB
 
 export function registerFileTools(server: McpServer): void {
-   server.tool(
+   server.registerTool(
     "read_file",
-    "Read the contents of a file in the project. Optionally limit output to a range of lines. Use list_files first if you are unsure of the file path.",
     {
+    description: "Read the contents of a file in the project. Optionally limit output to a range of lines. Use list_files first if you are unsure of the file path.",
+    inputSchema: {
       filepath: z
         .string()
         .describe(
@@ -27,6 +28,7 @@ export function registerFileTools(server: McpServer): void {
         .number()
         .optional()
         .describe("Last line to return (1-based, inclusive)"),
+    },
     },
     async ({ filepath, start_line, end_line }) => {
       const resolved = resolveProjectPath(filepath);
@@ -103,10 +105,11 @@ export function registerFileTools(server: McpServer): void {
     }
   );
 
-   server.tool(
+   server.registerTool(
     "edit_file",
-    "Write new content to a file, replacing it entirely. A timestamped backup is automatically created in .mcp-backups/ before any change. Use patch_file instead when making a small targeted change.",
     {
+    description: "Write new content to a file, replacing it entirely. A timestamped backup is automatically created in .mcp-backups/ before any change. Use patch_file instead when making a small targeted change.",
+    inputSchema: {
       filepath: z
         .string()
         .describe("Path to the file, relative to project root or absolute"),
@@ -118,6 +121,7 @@ export function registerFileTools(server: McpServer): void {
         .optional()
         .default(false)
         .describe("Create the file if it does not exist yet"),
+    },
     },
     async ({ filepath, content, create_if_missing }) => {
       const resolved = resolveProjectPath(filepath);
@@ -175,10 +179,11 @@ export function registerFileTools(server: McpServer): void {
     }
   );
 
-    server.tool(
+    server.registerTool(
     "patch_file",
-    "Replace a specific string or block of code within a file without rewriting the whole file. The old_string must appear exactly once in the file. A backup is created automatically before the change is applied.",
     {
+    description: "Replace a specific string or block of code within a file without rewriting the whole file. The old_string must appear exactly once in the file. A backup is created automatically before the change is applied.",
+    inputSchema: {
       filepath: z
         .string()
         .describe("Path to the file, relative to project root or absolute"),
@@ -190,6 +195,7 @@ export function registerFileTools(server: McpServer): void {
       new_string: z
         .string()
         .describe("The string to replace it with"),
+    },
     },
     async ({ filepath, old_string, new_string }) => {
       const resolved = resolveProjectPath(filepath);
@@ -255,10 +261,11 @@ export function registerFileTools(server: McpServer): void {
     }
   );
 
-   server.tool(
+   server.registerTool(
     "list_files",
-    "List the files and directories in the project as a tree. Use this to understand project structure before reading or editing files.",
     {
+    description: "List the files and directories in the project as a tree. Use this to understand project structure before reading or editing files.",
+    inputSchema: {
       directory: z
         .string()
         .optional()
@@ -271,6 +278,7 @@ export function registerFileTools(server: McpServer): void {
         .optional()
         .default(3)
         .describe("How many levels deep to show (1–5, default 3)"),
+    },
     },
     async ({ directory, depth }) => {
       const target = path.join(PROJECT_ROOT, directory);

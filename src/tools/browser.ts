@@ -6,10 +6,11 @@ import { isPortAllowed, allowedPortsLabel } from "../utils/security.js";
 
 export function registerBrowserTools(server: McpServer): void {
   
-  server.tool(
+  server.registerTool(
     "view_page",
-    "Fetch the HTML content and structure of a page on a running local dev server. Returns the page title, meta tags, script sources, and visible text. Optionally returns the full raw HTML.",
     {
+    description: "Fetch the HTML content and structure of a page on a running local dev server. Returns the page title, meta tags, script sources, and visible text. Optionally returns the full raw HTML.",
+    inputSchema: {
       port: z
         .number()
         .describe("The localhost port the dev app is running on (e.g. 5173, 3000)"),
@@ -23,6 +24,7 @@ export function registerBrowserTools(server: McpServer): void {
         .optional()
         .default(false)
         .describe("Include the full raw HTML in the response (may be large)"),
+    },
     },
     async ({ port, path: urlPath, include_raw_html }) => {
       if (!isPortAllowed(port)) {
@@ -110,11 +112,13 @@ export function registerBrowserTools(server: McpServer): void {
     }
   );
 
-   server.tool(
+   server.registerTool(
     "check_port",
-    "Check whether a dev server is currently running and responding on a given localhost port. Run this before view_page to confirm the server is up.",
     {
+    description: "Check whether a dev server is currently running and responding on a given localhost port. Run this before view_page to confirm the server is up.",
+    inputSchema: {
       port: z.number().describe("Port number to check"),
+    },
     },
     async ({ port }) => {
       if (!isPortAllowed(port)) {

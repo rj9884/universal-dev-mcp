@@ -1,5 +1,4 @@
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
-import { z } from "zod";
 import * as fs from "fs";
 import * as path from "path";
 import { PROJECT_ROOT, ALLOWED_PORTS, ALLOWED_COMMANDS } from "../config.js";
@@ -41,11 +40,10 @@ const CONFIG_FILES = [
 ];
 
 export function registerProjectTools(server: McpServer): void {
-  server.tool(
+  server.registerTool(
     "get_project_info",
-    "Get a full overview of the project: package.json metadata, npm scripts, dependencies, detected config files, and a two-level file tree. Always call this first when starting to work on a new project.",
     {
-      _unused: z.string().optional(),
+      description: "Get a full overview of the project: package.json metadata, npm scripts, dependencies, detected config files, and a two-level file tree. Always call this first when starting to work on a new project.",
     },
     async () => {
       const lines: string[] = [`Project root: ${PROJECT_ROOT}`, ""];

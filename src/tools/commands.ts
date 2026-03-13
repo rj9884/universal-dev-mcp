@@ -11,10 +11,11 @@ import {
 const execAsync = promisify(exec);
 
 export function registerCommandTools(server: McpServer): void {
-  server.tool(
+  server.registerTool(
     "run_command",
-    "Run an allowlisted shell command in the project root directory. Useful for running tests, linting, type-checking, and builds. Only commands explicitly listed in ALLOWED_COMMANDS may be executed.",
     {
+    description: "Run an allowlisted shell command in the project root directory. Useful for running tests, linting, type-checking, and builds. Only commands explicitly listed in ALLOWED_COMMANDS may be executed.",
+    inputSchema: {
       command: z
         .string()
         .describe(
@@ -27,6 +28,7 @@ export function registerCommandTools(server: McpServer): void {
         .describe(
           "Maximum execution time in milliseconds before the process is killed (default: 30000)"
         ),
+    },
     },
     async ({ command, timeout_ms }) => {
       if (!isCommandAllowed(command)) {
