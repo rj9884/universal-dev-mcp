@@ -2,19 +2,8 @@
   "name": "universal-dev-mcp",
   "version": "1.0.0",
   "description": "Universal MCP server that bridges AI tools to your local development application",
+  "type": "module",
   "main": "dist/server.js",
-  "keywords": [
-    "mcp",
-    "model-context-protocol",
-    "ai-tools",
-    "claude",
-    "developer-tools",
-    "llm",
-    "localhost",
-    "devtools",
-    "typescript",
-    "openai-compatible"
-  ],
   "scripts": {
     "build": "tsc",
     "prepare": "npm run build",
