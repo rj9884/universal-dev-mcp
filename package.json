@@ -12,6 +12,18 @@
     "dev": "ts-node src/server.ts",
     "dev:http": "ts-node src/http-server.ts"
   },
+  "keywords": [
+    "mcp",
+    "model-context-protocol",
+    "ai-tools",
+    "claude",
+    "developer-tools",
+    "llm",
+    "localhost",
+    "devtools",
+    "typescript",
+    "openai-compatible"
+  ],
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.0.0",
     "cors": "^2.8.5",
