@@ -21,7 +21,9 @@ export function isCommandAllowed(cmd: string): boolean {
 export function isPathAllowed(filePath: string, writeMode = false): boolean {
   const resolved = path.resolve(filePath);
   const dirs = writeMode ? ALLOWED_WRITE_DIRS : [PROJECT_ROOT];
-  return dirs.some((dir) => resolved.startsWith(dir));
+  return dirs.some(
+    (dir) => resolved === dir || resolved.startsWith(dir + path.sep)
+  );
 }
 
 export function allowedPortsLabel(): string {
