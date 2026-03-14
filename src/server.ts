@@ -1,7 +1,8 @@
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
 import { registerAllTools } from "./tools/index.js";
-import { PROJECT_ROOT, ALLOWED_PORTS, ALLOWED_COMMANDS } from "./config.js";
+import { PROJECT_ROOT, ALLOWED_PORTS, ALLOWED_COMMANDS, validateConfig } from "./config.js";
+import { cleanOldBackups } from "./utils/backup.js";
 
 const server = new McpServer({
   name: "universal-dev-mcp",
@@ -11,6 +12,9 @@ const server = new McpServer({
 registerAllTools(server);
 
 async function main(): Promise<void> {
+  validateConfig();
+  cleanOldBackups();
+
   const transport = new StdioServerTransport();
   await server.connect(transport);
 
