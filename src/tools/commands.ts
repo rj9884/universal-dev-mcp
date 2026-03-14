@@ -1,34 +1,31 @@
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
-import { exec } from "child_process";
-import { promisify } from "util";
+import { spawn } from "child_process";
 import { PROJECT_ROOT } from "../config.js";
-import {
-  isCommandAllowed,
-  allowedCommandsLabel,
-} from "../utils/security.js";
+import { isCommandAllowed, allowedCommandsLabel } from "../utils/security.js";
 
-const execAsync = promisify(exec);
+const MAX_OUTPUT_BYTES = 1024 * 1024; // 1 MB total output cap
 
 export function registerCommandTools(server: McpServer): void {
   server.registerTool(
     "run_command",
     {
-    description: "Run an allowlisted shell command in the project root directory. Useful for running tests, linting, type-checking, and builds. Only commands explicitly listed in ALLOWED_COMMANDS may be executed.",
-    inputSchema: {
-      command: z
-        .string()
-        .describe(
-          "The command to run. Must exactly match or start with one of the allowed commands."
-        ),
-      timeout_ms: z
-        .number()
-        .optional()
-        .default(30000)
-        .describe(
-          "Maximum execution time in milliseconds before the process is killed (default: 30000)"
-        ),
-    },
+      description:
+        "Run an allowlisted shell command in the project root directory. Useful for running tests, linting, type-checking, and builds. Only commands explicitly listed in ALLOWED_COMMANDS may be executed.",
+      inputSchema: {
+        command: z
+          .string()
+          .describe(
+            "The command to run. Must exactly match or start with one of the allowed commands."
+          ),
+        timeout_ms: z
+          .number()
+          .optional()
+          .default(30000)
+          .describe(
+            "Maximum execution time in milliseconds before the process is killed (default: 30000)"
+          ),
+      },
     },
     async ({ command, timeout_ms }) => {
       if (!isCommandAllowed(command)) {
@@ -51,59 +48,92 @@ export function registerCommandTools(server: McpServer): void {
 
       const startTime = Date.now();
 
-      try {
-        const { stdout, stderr } = await execAsync(command, {
+      return new Promise((resolve) => {
+        // Use spawn (streaming) instead of exec (buffered) to handle large output
+        const [program, ...args] = command.split(/\s+/);
+
+        const child = spawn(program, args, {
           cwd: PROJECT_ROOT,
-          timeout: timeout_ms,
-          maxBuffer: 1024 * 1024,
+          shell: true, // needed for npm scripts on Windows
+          env: process.env,
         });
 
-        const duration = Date.now() - startTime;
+        let stdout = "";
+        let stderr = "";
+        let totalBytes = 0;
+        let truncated = false;
+        let killed = false;
 
-        const lines: string[] = [
-          `Command:  ${command}`,
-          `Duration: ${duration}ms`,
-          `Exit:     0 (success)`,
-        ];
+        const timer = setTimeout(() => {
+          killed = true;
+          child.kill("SIGTERM");
+        }, timeout_ms);
 
-        if (stdout.trim()) {
-          lines.push("", "stdout:", stdout.trimEnd().slice(0, 5000));
-        }
+        child.stdout.on("data", (chunk: Buffer) => {
+          if (totalBytes < MAX_OUTPUT_BYTES) {
+            const str = chunk.toString("utf8");
+            stdout += str;
+            totalBytes += str.length;
+          } else {
+            truncated = true;
+          }
+        });
 
-        if (stderr.trim()) {
-          lines.push("", "stderr:", stderr.trimEnd().slice(0, 2000));
-        }
+        child.stderr.on("data", (chunk: Buffer) => {
+          if (totalBytes < MAX_OUTPUT_BYTES) {
+            const str = chunk.toString("utf8");
+            stderr += str;
+            totalBytes += str.length;
+          } else {
+            truncated = true;
+          }
+        });
 
-        return { content: [{ type: "text", text: lines.join("\n") }] };
-      } catch (err: unknown) {
-        const duration = Date.now() - startTime;
-        const e = err as {
-          message?: string;
-          stdout?: string;
-          stderr?: string;
-          killed?: boolean;
-          code?: number;
-        };
+        child.on("close", (code) => {
+          clearTimeout(timer);
+          const duration = Date.now() - startTime;
 
-        const lines: string[] = [
-          `Command:  ${command}`,
-          `Duration: ${duration}ms`,
-          e.killed
-            ? `Exit:     killed (timeout after ${timeout_ms}ms)`
-            : `Exit:     ${e.code ?? "non-zero"} (failure)`,
-          `Error:    ${e.message}`,
-        ];
+          const lines: string[] = [
+            `Command:  ${command}`,
+            `Duration: ${duration}ms`,
+            killed
+              ? `Exit:     killed (timeout after ${timeout_ms}ms)`
+              : `Exit:     ${code ?? "?"} (${code === 0 ? "success" : "failure"})`,
+          ];
 
-        if (e.stdout?.trim()) {
-          lines.push("", "stdout:", e.stdout.trimEnd().slice(0, 3000));
-        }
+          if (truncated) {
+            lines.push(`[Output truncated at ${MAX_OUTPUT_BYTES / 1024}KB]`);
+          }
 
-        if (e.stderr?.trim()) {
-          lines.push("", "stderr:", e.stderr.trimEnd().slice(0, 3000));
-        }
+          if (stdout.trim()) {
+            lines.push("", "stdout:", stdout.trimEnd().slice(0, 5000));
+          }
 
-        return { content: [{ type: "text", text: lines.join("\n") }] };
-      }
+          if (stderr.trim()) {
+            lines.push("", "stderr:", stderr.trimEnd().slice(0, 2000));
+          }
+
+          resolve({ content: [{ type: "text", text: lines.join("\n") }] });
+        });
+
+        child.on("error", (err) => {
+          clearTimeout(timer);
+          const duration = Date.now() - startTime;
+          resolve({
+            content: [
+              {
+                type: "text",
+                text: [
+                  `Command:  ${command}`,
+                  `Duration: ${duration}ms`,
+                  `Exit:     error`,
+                  `Error:    ${err.message}`,
+                ].join("\n"),
+              },
+            ],
+          });
+        });
+      });
     }
   );
 }
