@@ -95,7 +95,51 @@ export function stripHtmlToText(html: string, maxLength = 8000): string {
     .replace(/<script[\s\S]*?<\/script>/gi, "")
     .replace(/<style[\s\S]*?<\/style>/gi, "")
     .replace(/<[^>]+>/g, " ")
+    .replace(/&amp;/g, "&")
+    .replace(/&lt;/g, "<")
+    .replace(/&gt;/g, ">")
+    .replace(/&quot;/g, '"')
+    .replace(/&#039;/g, "'")
+    .replace(/&nbsp;/g, " ")
     .replace(/\s+/g, " ")
     .trim()
     .slice(0, maxLength);
+}
+
+export function extractInnerText(html: string, tagName: string): string | null {
+  const re = new RegExp(`<${tagName}[^>]*>([\\s\\S]*?)<\\/${tagName}>`, "i");
+  const match = re.exec(html);
+  return match ? match[1].trim() : null;
+}
+
+export function extractTagAttributes(
+  html: string,
+  tagPattern: RegExp,
+  attrName: string
+): string[] {
+  const results: string[] = [];
+  let match: RegExpExecArray | null;
+  const tagRe = new RegExp(tagPattern.source, "gi");
+  while ((match = tagRe.exec(html)) !== null) {
+    const tag = match[0];
+    const attrRe = new RegExp(
+      `${attrName}\\s*=\\s*(?:"([^"]*)"|'([^']*)')`,
+      "i"
+    );
+    const attrMatch = attrRe.exec(tag);
+    if (attrMatch) {
+      results.push(attrMatch[1] ?? attrMatch[2] ?? "");
+    }
+  }
+  return results;
+}
+
+export function extractMetaTags(html: string): string[] {
+  const results: string[] = [];
+  const re = /<meta[\s\S]*?(?:\/>|>)/gi;
+  let match: RegExpExecArray | null;
+  while ((match = re.exec(html)) !== null) {
+    results.push(match[0].replace(/\s+/g, " ").trim());
+  }
+  return results;
 }
