@@ -43,7 +43,9 @@ export function registerProjectTools(server: McpServer): void {
   server.registerTool(
     "get_project_info",
     {
-      description: "Get a full overview of the project: package.json metadata, npm scripts, dependencies, detected config files, and a two-level file tree. Always call this first when starting to work on a new project.",
+      description:
+        "Get a full overview of the project: package.json metadata, npm scripts, dependencies, detected config files, and a two-level file tree. Always call this first when starting to work on a new project.",
+      inputSchema: {},
     },
     async () => {
       const lines: string[] = [`Project root: ${PROJECT_ROOT}`, ""];
