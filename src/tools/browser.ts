@@ -1,30 +1,37 @@
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
 import * as http from "http";
-import { fetchUrl, stripHtmlToText } from "../utils/fetch.js";
+import {
+  fetchUrl,
+  stripHtmlToText,
+  extractInnerText,
+  extractTagAttributes,
+  extractMetaTags,
+} from "../utils/fetch.js";
 import { isPortAllowed, allowedPortsLabel } from "../utils/security.js";
 
 export function registerBrowserTools(server: McpServer): void {
-  
+
   server.registerTool(
     "view_page",
     {
-    description: "Fetch the HTML content and structure of a page on a running local dev server. Returns the page title, meta tags, script sources, and visible text. Optionally returns the full raw HTML.",
-    inputSchema: {
-      port: z
-        .number()
-        .describe("The localhost port the dev app is running on (e.g. 5173, 3000)"),
-      path: z
-        .string()
-        .optional()
-        .default("/")
-        .describe("URL path to fetch (e.g. /about, /dashboard)"),
-      include_raw_html: z
-        .boolean()
-        .optional()
-        .default(false)
-        .describe("Include the full raw HTML in the response (may be large)"),
-    },
+      description:
+        "Fetch the HTML content and structure of a page on a running local dev server. Returns the page title, meta tags, script sources, and visible text. Optionally returns the full raw HTML.",
+      inputSchema: {
+        port: z
+          .number()
+          .describe("The localhost port the dev app is running on (e.g. 5173, 3000)"),
+        path: z
+          .string()
+          .optional()
+          .default("/")
+          .describe("URL path to fetch (e.g. /about, /dashboard)"),
+        include_raw_html: z
+          .boolean()
+          .optional()
+          .default(false)
+          .describe("Include the full raw HTML in the response (may be large)"),
+      },
     },
     async ({ port, path: urlPath, include_raw_html }) => {
       if (!isPortAllowed(port)) {
@@ -50,24 +57,18 @@ export function registerBrowserTools(server: McpServer): void {
         const isHtml =
           contentType.includes("html") || body.trim().startsWith("<");
 
-        const titleMatch = body.match(/<title[^>]*>(.*?)<\/title>/is);
-        const title = titleMatch ? titleMatch[1].trim() : "(no title)";
+        // Use robust helpers instead of inline regex
+        const title = extractInnerText(body, "title") ?? "(no title)";
+        const metaTags = extractMetaTags(body);
+        const scripts = extractTagAttributes(
+          body,
+          /<script[^>]*src\s*=\s*(?:"[^"]*"|'[^']*')[^>]*>/i,
+          "src"
+        );
 
-        const metaTags: string[] = [];
-        const metaRegex = /<meta[^>]+>/gi;
-        let metaMatch: RegExpExecArray | null;
-        while ((metaMatch = metaRegex.exec(body)) !== null) {
-          metaTags.push(metaMatch[0]);
-        }
-
-        const scripts: string[] = [];
-        const scriptRegex = /<script[^>]*src=["']([^"']+)["']/gi;
-        let scriptMatch: RegExpExecArray | null;
-        while ((scriptMatch = scriptRegex.exec(body)) !== null) {
-          scripts.push(scriptMatch[1]);
-        }
-
-        const visibleText = isHtml ? stripHtmlToText(body) : body.slice(0, 8000);
+        const visibleText = isHtml
+          ? stripHtmlToText(body)
+          : body.slice(0, 8000);
 
         const lines: string[] = [
           `URL:          ${url}`,
@@ -112,13 +113,14 @@ export function registerBrowserTools(server: McpServer): void {
     }
   );
 
-   server.registerTool(
+  server.registerTool(
     "check_port",
     {
-    description: "Check whether a dev server is currently running and responding on a given localhost port. Run this before view_page to confirm the server is up.",
-    inputSchema: {
-      port: z.number().describe("Port number to check"),
-    },
+      description:
+        "Check whether a dev server is currently running and responding on a given localhost port. Run this before view_page to confirm the server is up.",
+      inputSchema: {
+        port: z.number().describe("Port number to check"),
+      },
     },
     async ({ port }) => {
       if (!isPortAllowed(port)) {
