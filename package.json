@@ -4,6 +4,9 @@
   "description": "Universal MCP server that bridges AI tools to your local development application",
   "type": "module",
   "main": "dist/server.js",
+  "bin": {
+    "mcp-switch": "./dist/cli/switch.js"
+  },
   "scripts": {
     "build": "tsc",
     "prepare": "npm run build",
@@ -26,6 +29,7 @@
   ],
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.0.0",
+    "commander": "^14.0.3",
     "cors": "^2.8.5",
     "dotenv": "^16.0.0",
     "express": "^4.18.0",
