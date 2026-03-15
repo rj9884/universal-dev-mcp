@@ -1,0 +1,16 @@
+{
+  "projects": [
+    {
+      "name": "universal-dev-mcp",
+      "root": "C:\\Users\\rj_01\\Downloads\\universal-dev-mcp",
+      "allowed_ports": "3000,5173,8080",
+      "allowed_commands": "npm run build,npx tsc --noEmit,npm test"
+    },
+    {
+      "name": "mcp-tray",
+      "root": "C:\\Users\\rj_01\\Downloads\\mcp-tray",
+      "allowed_ports": "3000,5173,8080",
+      "allowed_commands": "npm run build,npx tsc --noEmit,npm test"
+    }
+  ]
+}
