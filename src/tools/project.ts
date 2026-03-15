@@ -1,6 +1,7 @@
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import * as fs from "fs";
 import * as path from "path";
+import * as childProcess from "child_process";
 import { PROJECT_ROOT, ALLOWED_PORTS, ALLOWED_COMMANDS } from "../config.js";
 import { getFileTree } from "../utils/fs.js";
 
@@ -40,6 +41,95 @@ const CONFIG_FILES = [
 ];
 
 export function registerProjectTools(server: McpServer): void {
+
+  // get_active_project 
+  server.registerTool(
+    "get_active_project",
+    {
+      description:
+        "Shows which project is currently active — name, root path, package info, file count, and git branch. Use this to visually confirm which project the MCP server is connected to.",
+      inputSchema: {},
+    },
+    async () => {
+      const lines: string[] = [];
+
+      let projName    = path.basename(PROJECT_ROOT);
+      let projVersion = "";
+      let projDesc    = "";
+      const pkgPath   = path.join(PROJECT_ROOT, "package.json");
+      if (fs.existsSync(pkgPath)) {
+        try {
+          const pkg = JSON.parse(fs.readFileSync(pkgPath, "utf8"));
+          projName    = pkg.name    || projName;
+          projVersion = pkg.version || "";
+          projDesc    = pkg.description || "";
+        } catch { /* ignore */ }
+      }
+
+      // Count files (excluding node_modules and hidden dirs)
+      let fileCount = 0;
+      function countFiles(dir: string) {
+        try {
+          for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
+            if (entry.name.startsWith(".") || entry.name === "node_modules") continue;
+            const full = path.join(dir, entry.name);
+            if (entry.isDirectory()) countFiles(full);
+            else fileCount++;
+          }
+        } catch { /* ignore */ }
+      }
+      countFiles(PROJECT_ROOT);
+
+      // Get git branch
+      let gitBranch = "(not a git repo)";
+      try {
+        const result = childProcess.execSync("git rev-parse --abbrev-ref HEAD", {
+          cwd: PROJECT_ROOT,
+          timeout: 3000,
+          stdio: ["ignore", "pipe", "ignore"],
+        });
+        gitBranch = result.toString().trim();
+      } catch { /* ignore */ }
+
+      // Get last git commit
+      let lastCommit = "";
+      try {
+        const result = childProcess.execSync('git log -1 --format="%h %s"', {
+          cwd: PROJECT_ROOT,
+          timeout: 3000,
+          stdio: ["ignore", "pipe", "ignore"],
+        });
+        lastCommit = result.toString().trim();
+      } catch { /* ignore */ }
+
+      const rootExists = fs.existsSync(PROJECT_ROOT);
+      const bar = "=".repeat(52);
+
+      lines.push(bar);
+      lines.push("  ACTIVE PROJECT");
+      lines.push(bar);
+      lines.push(`  Name     : ${projName}${projVersion ? " v" + projVersion : ""}`);
+      if (projDesc) {
+        lines.push(`  Desc     : ${projDesc}`);
+      }
+      lines.push(`  Root     : ${PROJECT_ROOT}`);
+      lines.push(`  Exists   : ${rootExists ? "YES" : "NO - folder not found!"}`);
+      lines.push(`  Files    : ${fileCount}`);
+      lines.push(`  Git      : ${gitBranch}`);
+      if (lastCommit) {
+        lines.push(`  Commit   : ${lastCommit}`);
+      }
+      lines.push(bar);
+      lines.push("  MCP Settings");
+      lines.push(`  Ports    : ${ALLOWED_PORTS.join(", ")}`);
+      lines.push(`  Commands : ${ALLOWED_COMMANDS.join(", ")}`);
+      lines.push(bar);
+
+      return { content: [{ type: "text", text: lines.join("\n") }] };
+    }
+  );
+
+  // get_project_info 
   server.registerTool(
     "get_project_info",
     {
