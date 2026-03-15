@@ -1,6 +1,6 @@
 # universal-dev-mcp
 
-A universal MCP (Model Context Protocol) server that gives AI tools live access to your running local development application. Connect Claude Desktop, Cursor, Windsurf, Zed, Gemini, ChatGPT, or any MCP-compatible tool to your localhost dev server — view pages, call APIs, read and edit source files, and run commands, all with configurable safety guardrails.
+A universal MCP (Model Context Protocol) server that gives AI tools live access to your running local development application. Connect Claude Desktop, Cursor, Windsurf, Zed, Gemini, ChatGPT, or any MCP-compatible tool to your localhost dev server — view pages, call APIs, read and edit source files, run commands, and switch between projects — all with configurable safety guardrails.
 
 ---
 
@@ -12,11 +12,13 @@ A universal MCP (Model Context Protocol) server that gives AI tools live access 
 - [Installation](#installation)
 - [Configuration](#configuration)
 - [Connecting to Claude Desktop](#connecting-to-claude-desktop)
+- [Switching projects](#switching-projects)
 - [Connecting to MCP-compatible editors](#connecting-to-mcp-compatible-editors)
 - [Connecting to Gemini / ChatGPT (HTTP mode)](#connecting-to-gemini--chatgpt-http-mode)
 - [Security](#security)
 - [npm scripts](#npm-scripts)
 - [Example prompts](#example-prompts)
+- [License](#license)
 
 ---
 
@@ -43,8 +45,9 @@ universal-dev-mcp sits between your AI tool and your local dev environment. It e
                  └──────────────┬───────────────┘
                                 │
                     ┌───────────▼───────────┐
-                    │       9 MCP Tools      │
+                    │      12 MCP Tools      │
                     │                        │
+                    │  get_active_project    │
                     │  get_project_info      │
                     │  check_port            │
                     │  view_page             │
@@ -53,6 +56,9 @@ universal-dev-mcp sits between your AI tool and your local dev environment. It e
                     │  edit_file             │
                     │  patch_file            │
                     │  list_files            │
+                    │  delete_file           │
+                    │  move_file             │
+                    │  search_files          │
                     │  run_command           │
                     └───────────┬───────────┘
                                 │  allowlist guards + auto-backup
@@ -66,7 +72,7 @@ universal-dev-mcp sits between your AI tool and your local dev environment. It e
 
 **MCP stdio** (`server.ts`) — used by editors that support MCP natively (Claude Desktop, Cursor, Windsurf, Zed). The editor spawns the server as a child process and communicates over stdin/stdout.
 
-**HTTP/SSE** (`http-server.ts`) — used by tools that don't support MCP stdio. Exposes a REST API and an OpenAI-compatible tool-calling interface so any HTTP client can call the same 9 tools.
+**HTTP/SSE** (`http-server.ts`) — used by tools that don't support MCP stdio. Exposes a REST API and an OpenAI-compatible tool-calling interface so any HTTP client can call the same tools.
 
 All tool calls go through the same security layer regardless of transport: port allowlist, command allowlist, write directory scope, and automatic file backups.
 
@@ -76,6 +82,7 @@ All tool calls go through the same security layer regardless of transport: port 
 
 | Tool | Description |
 |---|---|
+| `get_active_project` | Show which project is currently active — name, root, git branch, file count. Use this to confirm a project switch worked. |
 | `get_project_info` | Read package.json, scripts, dependencies, config files, and project structure. Run this first. |
 | `check_port` | Verify a dev server is running and responding on a given port. |
 | `view_page` | Fetch a page from a running local dev server — returns title, meta tags, scripts, and visible text. |
@@ -84,6 +91,9 @@ All tool calls go through the same security layer regardless of transport: port 
 | `edit_file` | Overwrite a file with new content. A timestamped backup is created automatically. |
 | `patch_file` | Replace a unique string within a file without rewriting it entirely. Backup created automatically. |
 | `list_files` | Display the project directory as a file tree. |
+| `delete_file` | Delete a file. A timestamped backup is created automatically before deletion. |
+| `move_file` | Move or rename a file within the project. A backup is created automatically. |
+| `search_files` | Search for a text string or regex across all project files with optional filename glob filter. |
 | `run_command` | Run an allowlisted shell command (tests, lint, build, type-check) in the project root. |
 
 ---
@@ -93,23 +103,28 @@ All tool calls go through the same security layer regardless of transport: port 
 ```
 universal-dev-mcp/
 ├── src/
+│   ├── cli/
+│   │   └── switch.ts          Cross-platform CLI for switching projects (mcp-switch)
 │   ├── config.ts              Environment variables and defaults
-│   ├── server.ts              MCP stdio entry point for MCP-compatible editors and tools
+│   ├── server.ts              MCP stdio entry point
 │   ├── http-server.ts         HTTP/SSE server for tools that do not support MCP stdio
 │   ├── tools/
 │   │   ├── index.ts           Registers all tools onto the server
 │   │   ├── browser.ts         view_page, check_port
 │   │   ├── api.ts             get_api_response
-│   │   ├── files.ts           read_file, edit_file, patch_file, list_files
+│   │   ├── files.ts           read_file, edit_file, patch_file, list_files, delete_file, move_file
+│   │   ├── search.ts          search_files
 │   │   ├── commands.ts        run_command
-│   │   └── project.ts         get_project_info
+│   │   └── project.ts         get_project_info, get_active_project
 │   └── utils/
 │       ├── security.ts        Port, command, and path access guards
-│       ├── backup.ts          File backup creation and management
-│       ├── fetch.ts           HTTP fetch helpers and HTML stripping
+│       ├── backup.ts          File backup creation, rotation, and cleanup
+│       ├── fetch.ts           HTTP fetch helpers and HTML parsing utilities
 │       └── fs.ts              File tree generation and path helpers
+├── projects.json              List of projects for mcp-switch
 ├── .env.example               Configuration template
 ├── .gitignore
+├── LICENSE                    MIT License
 ├── package.json
 ├── tsconfig.json
 └── README.md
@@ -124,6 +139,12 @@ git clone https://github.com/rj9884/universal-dev-mcp
 cd universal-dev-mcp
 npm install
 # npm install automatically compiles TypeScript via the prepare script
+```
+
+To make the `mcp-switch` CLI available globally on your machine:
+
+```bash
+npm link
 ```
 
 ---
@@ -160,7 +181,8 @@ HTTP_PORT=3333
 Edit your Claude Desktop config file:
 
 - **macOS**: `~/Library/Application Support/Claude/claude_desktop_config.json`
-- **Windows**: `%APPDATA%\Claude\claude_desktop_config.json`
+- **Windows**: `%APPDATA%\Claude\claude_desktop_config.json` or `%LOCALAPPDATA%\Packages\Claude_*\LocalCache\Roaming\Claude\claude_desktop_config.json` (Windows Store install)
+- **Linux**: `~/.config/Claude/claude_desktop_config.json`
 
 ```json
 {
@@ -182,9 +204,67 @@ Use absolute paths. Restart Claude Desktop after saving.
 
 ---
 
+## Switching projects
+
+Instead of manually editing `claude_desktop_config.json` every time you switch projects, use the built-in `mcp-switch` CLI. It works on **Windows, macOS, and Linux**.
+
+### Setup
+
+Add your projects to `projects.json` in the repo root:
+
+```json
+{
+  "projects": [
+    {
+      "name": "my-react-app",
+      "root": "/Users/yourname/projects/my-react-app",
+      "allowed_ports": "3000,5173",
+      "allowed_commands": "npm run build,npm test,npm run dev"
+    },
+    {
+      "name": "my-api-server",
+      "root": "/Users/yourname/projects/my-api-server",
+      "allowed_ports": "8080",
+      "allowed_commands": "npm run build,npm test"
+    }
+  ]
+}
+```
+
+### Commands
+
+```bash
+# Interactive menu — pick a project by number
+npx mcp-switch
+
+# Switch directly by name
+npx mcp-switch use my-react-app
+
+# Show the currently active project
+npx mcp-switch current
+
+# List all projects (active one is marked with *)
+npx mcp-switch list
+
+# Add a new project interactively
+npx mcp-switch add
+```
+
+After switching, **restart Claude Desktop** for the change to take effect.
+
+### Confirming the switch inside Claude
+
+After restarting Claude Desktop, ask Claude:
+
+> "which project is active?"
+
+Claude will call `get_active_project` and show you the project name, root path, git branch, and file count — so you can visually confirm the switch worked.
+
+---
+
 ## Connecting to MCP-compatible editors
 
-Any editor that supports MCP stdio (Cursor, Windsurf, Zed, and others) uses the same configuration format. Open your editor's MCP settings and add the same server block shown above, then restart the editor.
+Any editor that supports MCP stdio (Cursor, Windsurf, Zed, and others) uses the same configuration format. Open your editor's MCP settings and add the same server block shown in the Claude Desktop section above, then restart the editor.
 
 ---
 
@@ -226,27 +306,19 @@ import { GoogleGenerativeAI } from "@google/generative-ai";
 
 const MCP_URL = "http://localhost:3333";
 
-// Fetch tools from the MCP server in OpenAI format (Gemini accepts the same schema)
 async function getMcpTools() {
   const res = await fetch(`${MCP_URL}/openai/tools`);
   const { tools } = await res.json();
   return tools;
 }
 
-// Execute a tool call returned by Gemini
 async function callMcpTool(name: string, args: Record<string, unknown>): Promise<string> {
   const res = await fetch(`${MCP_URL}/openai/call`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
       tool_calls: [
-        {
-          id: "call_1",
-          function: {
-            name,
-            arguments: JSON.stringify(args),
-          },
-        },
+        { id: "call_1", function: { name, arguments: JSON.stringify(args) } },
       ],
     }),
   });
@@ -264,21 +336,13 @@ async function main() {
   });
 
   const chat = model.startChat();
-
-  // Ask Gemini to inspect your project
   let result = await chat.sendMessage("Get an overview of my project.");
 
-  // Handle tool calls until Gemini returns a final text response
   while (result.response.functionCalls()?.length) {
     const toolResponses = await Promise.all(
       result.response.functionCalls()!.map(async (call) => {
         const output = await callMcpTool(call.name, call.args as Record<string, unknown>);
-        return {
-          functionResponse: {
-            name: call.name,
-            response: { result: output },
-          },
-        };
+        return { functionResponse: { name: call.name, response: { result: output } } };
       })
     );
     result = await chat.sendMessage(toolResponses);
@@ -299,7 +363,8 @@ All tool calls are restricted by the following controls:
 - **Port allowlist** — AI can only connect to ports listed in `ALLOWED_PORTS`.
 - **Command allowlist** — AI can only run commands listed in `ALLOWED_COMMANDS`.
 - **Write directory scope** — File writes are restricted to `ALLOWED_WRITE_DIRS` (defaults to `PROJECT_ROOT`).
-- **Automatic backups** — Every file write creates a `.mcp-backups/filename.timestamp.bak` before making any change.
+- **Path traversal protection** — All paths are resolved and validated against allowed directories before any operation.
+- **Automatic backups** — Every file write or delete creates a `.mcp-backups/filename.timestamp.bak` before making any change. Backups older than 7 days are cleaned up automatically; at most 10 backups are kept per file.
 - **API key** — Set `MCP_API_KEY` to require authentication on all HTTP endpoints.
 
 ### Restoring a backup
@@ -328,6 +393,9 @@ npm run dev:http      # HTTP server with ts-node (no build step)
 Once connected to your AI tool:
 
 ```
+Which project is currently active?
+```
+```
 Check if my dev server is running on port 5173.
 ```
 ```
@@ -335,6 +403,9 @@ Get an overview of my project and tell me what tech stack it uses.
 ```
 ```
 Fetch the homepage from localhost:5173 and describe the UI structure.
+```
+```
+Search for all usages of the useAuth hook across the project.
 ```
 ```
 Read src/App.tsx and identify any potential issues.
@@ -345,3 +416,14 @@ Run npm test and summarize any failures.
 ```
 Fix the TypeScript error in src/utils/api.ts on line 42.
 ```
+```
+Rename src/utils/helpers.ts to src/utils/format.ts.
+```
+
+---
+
+## License
+
+MIT License — Copyright (c) 2026 RAJAN JAISWAL
+
+See [LICENSE](./LICENSE) for the full text.
