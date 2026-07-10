@@ -14,9 +14,76 @@ export const ALLOWED_PORTS: number[] = (
   .map((p) => parseInt(p.trim(), 10))
   .filter((p) => !isNaN(p));
 
+/**
+ * "npm run" (no script name) is intentionally bare: isCommandAllowed does a
+ * prefix match, so this permits "npm run <any-script-in-package.json>"
+ * without needing every script name listed individually.
+ */
+const DEFAULT_ALLOWED_COMMANDS = [
+  // npm
+  "npm install",
+  "npm ci",
+  "npm run",
+  "npm test",
+  "npm outdated",
+  "npm audit",
+  "npm list",
+  "npm --version",
+  // npx (curated — npx can execute arbitrary published packages, so this
+  // stays a specific list rather than a bare "npx" prefix)
+  "npx tsc --noEmit",
+  "npx eslint",
+  "npx prettier --check",
+  "npx playwright test",
+  "npx vitest",
+  "npx jest",
+  "npx next build",
+  "npx next lint",
+  // yarn / pnpm (for projects that use them instead of npm)
+  "yarn install",
+  "yarn build",
+  "yarn test",
+  "yarn lint",
+  "pnpm install",
+  "pnpm build",
+  "pnpm test",
+  "pnpm lint",
+  // git (day-to-day workflow; excludes destructive ops like reset --hard,
+  // clean -fd, and push --force by simply not listing them)
+  "git status",
+  "git diff",
+  "git log",
+  "git branch",
+  "git show",
+  "git remote -v",
+  "git fetch",
+  "git pull",
+  "git add",
+  "git commit",
+  "git stash",
+  "git checkout",
+  "git push",
+  // python
+  "python -m venv",
+  "python -m pytest",
+  "pytest",
+  "pip install",
+  "pip list",
+  "pip freeze",
+  "python --version",
+  // docker
+  "docker compose up",
+  "docker compose down",
+  "docker compose build",
+  "docker compose ps",
+  "docker ps",
+  "docker --version",
+  // misc
+  "node --version",
+].join(",");
+
 export const ALLOWED_COMMANDS: string[] = (
-  process.env.ALLOWED_COMMANDS ||
-  "npm test,npm run lint,npm run build,npm run dev,npx tsc --noEmit"
+  process.env.ALLOWED_COMMANDS || DEFAULT_ALLOWED_COMMANDS
 )
   .split(",")
   .map((c) => c.trim())

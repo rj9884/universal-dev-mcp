@@ -2,15 +2,15 @@
   "projects": [
     {
       "name": "universal-dev-mcp",
-      "root": "C:\\Users\\rj_01\\Downloads\\universal-dev-mcp",
+      "root": "C:\\Users\\rj_01\\Coding\\universal-dev-mcp",
       "allowed_ports": "3000,5173,8080",
-      "allowed_commands": "npm run build,npx tsc --noEmit,npm test"
+      "allowed_commands": "npm install,npm ci,npm run,npm test,npm outdated,npm audit,npm list,npm --version,npx tsc --noEmit,npx eslint,npx prettier --check,git status,git diff,git log,git branch,git show,git remote -v,git fetch,git pull,git add,git commit,git stash,git checkout,git push,node --version"
     },
     {
-      "name": "mcp-tray",
-      "root": "C:\\Users\\rj_01\\Downloads\\mcp-tray",
+      "name": "healthGuard",
+      "root": "C:\\Users\\rj_01\\Coding\\healthGuard",
       "allowed_ports": "3000,5173,8080",
-      "allowed_commands": "npm run build,npx tsc --noEmit,npm test"
+      "allowed_commands": "npm install,npm ci,npm run,npm test,npm outdated,npm audit,npm list,npm --version,npx tsc --noEmit,npx eslint,npx prettier --check,npx playwright test,npx vitest,npx jest,npx next build,npx next lint,git status,git diff,git log,git branch,git show,git remote -v,git fetch,git pull,git add,git commit,git stash,git checkout,git push,python -m venv,python -m pytest,pytest,pip install,pip list,pip freeze,python --version,docker compose up,docker compose down,docker compose build,docker compose ps,docker ps,docker --version,node --version"
     }
   ]
 }

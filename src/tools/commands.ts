@@ -2,7 +2,12 @@ import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
 import { spawn } from "child_process";
 import { PROJECT_ROOT } from "../config.js";
-import { isCommandAllowed, allowedCommandsLabel } from "../utils/security.js";
+import {
+  isCommandAllowed,
+  allowedCommandsLabel,
+  hasShellInjectionRisk,
+  resolveAllowedCwd,
+} from "../utils/security.js";
 
 const MAX_OUTPUT_BYTES = 1024 * 1024; // 1 MB total output cap
 
@@ -11,12 +16,18 @@ export function registerCommandTools(server: McpServer): void {
     "run_command",
     {
       description:
-        "Run an allowlisted shell command in the project root directory. Useful for running tests, linting, type-checking, and builds. Only commands explicitly listed in ALLOWED_COMMANDS may be executed.",
+        "Run an allowlisted shell command in the project root directory (or a subdirectory via `cwd`, useful for monorepos like frontend/ + backend/). Useful for installing dependencies, running tests, linting, type-checking, and builds. Only commands explicitly listed in ALLOWED_COMMANDS may be executed.",
       inputSchema: {
         command: z
           .string()
           .describe(
             "The command to run. Must exactly match or start with one of the allowed commands."
+          ),
+        cwd: z
+          .string()
+          .optional()
+          .describe(
+            "Directory to run the command in, relative to the project root (e.g. 'frontend' or 'backend'). Must resolve inside the project root. Defaults to the project root. Prefer this over `npm run x --prefix <dir>`, which does not reliably resolve local binaries (e.g. next, vite) on Windows."
           ),
         timeout_ms: z
           .number()
@@ -27,7 +38,7 @@ export function registerCommandTools(server: McpServer): void {
           ),
       },
     },
-    async ({ command, timeout_ms }) => {
+    async ({ command, cwd, timeout_ms }) => {
       if (!isCommandAllowed(command)) {
         return {
           content: [
@@ -39,8 +50,36 @@ export function registerCommandTools(server: McpServer): void {
                 "Allowed commands:",
                 allowedCommandsLabel(),
                 "",
-                "To permit additional commands, update ALLOWED_COMMANDS in your .env file.",
+                "To permit additional commands, update ALLOWED_COMMANDS in your .env file (or projects.json + `mcp-switch use`).",
               ].join("\n"),
+            },
+          ],
+        };
+      }
+
+      if (hasShellInjectionRisk(command)) {
+        return {
+          content: [
+            {
+              type: "text",
+              text: [
+                `Command rejected: "${command}"`,
+                "",
+                "Contains shell metacharacters (; & | ` $( < >) that could chain or inject additional commands.",
+                "Run one command per call instead of chaining with && or ;.",
+              ].join("\n"),
+            },
+          ],
+        };
+      }
+
+      const resolvedCwd = resolveAllowedCwd(cwd);
+      if (resolvedCwd === null) {
+        return {
+          content: [
+            {
+              type: "text",
+              text: `cwd "${cwd}" resolves outside the project root (${PROJECT_ROOT}). Refusing to run.`,
             },
           ],
         };
@@ -53,7 +92,7 @@ export function registerCommandTools(server: McpServer): void {
         const [program, ...args] = command.split(/\s+/);
 
         const child = spawn(program, args, {
-          cwd: PROJECT_ROOT,
+          cwd: resolvedCwd,
           shell: true, // needed for npm scripts on Windows
           env: process.env,
         });
@@ -95,6 +134,7 @@ export function registerCommandTools(server: McpServer): void {
 
           const lines: string[] = [
             `Command:  ${command}`,
+            `Cwd:      ${resolvedCwd}`,
             `Duration: ${duration}ms`,
             killed
               ? `Exit:     killed (timeout after ${timeout_ms}ms)`
@@ -125,6 +165,7 @@ export function registerCommandTools(server: McpServer): void {
                 type: "text",
                 text: [
                   `Command:  ${command}`,
+                  `Cwd:      ${resolvedCwd}`,
                   `Duration: ${duration}ms`,
                   `Exit:     error`,
                   `Error:    ${err.message}`,
