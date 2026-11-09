@@ -115,6 +115,13 @@ export function getBackupDir(): string {
   return path.join(_projectRoot, ".mcp-backups");
 }
 
+// Live ESM exports for backward compatibility
+export let PROJECT_ROOT: string = _projectRoot;
+export let ALLOWED_PORTS: number[] = _allowedPorts;
+export let ALLOWED_COMMANDS: string[] = _allowedCommands;
+export let ALLOWED_WRITE_DIRS: string[] = _allowedWriteDirs;
+export let BACKUP_DIR: string = path.join(_projectRoot, ".mcp-backups");
+
 export function setActiveProjectConfig(config: {
   root: string;
   allowedPorts?: string | number[];
@@ -156,18 +163,14 @@ export function setActiveProjectConfig(config: {
   } else {
     _allowedWriteDirs = [_projectRoot];
   }
+
+  // Update live ESM bindings
+  PROJECT_ROOT = _projectRoot;
+  ALLOWED_PORTS = _allowedPorts;
+  ALLOWED_COMMANDS = _allowedCommands;
+  ALLOWED_WRITE_DIRS = _allowedWriteDirs;
+  BACKUP_DIR = path.join(_projectRoot, ".mcp-backups");
 }
-
-// Backward-compatible exports using getters
-export const PROJECT_ROOT: string = _projectRoot;
-Object.defineProperty(exports || {}, "PROJECT_ROOT", {
-  get: () => _projectRoot,
-});
-
-export const ALLOWED_PORTS: number[] = _allowedPorts;
-export const ALLOWED_COMMANDS: string[] = _allowedCommands;
-export const ALLOWED_WRITE_DIRS: string[] = _allowedWriteDirs;
-export const BACKUP_DIR: string = path.join(_projectRoot, ".mcp-backups");
 
 export const HTTP_PORT: number = parseInt(
   process.env.HTTP_PORT || "3333",
