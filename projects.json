@@ -5,12 +5,6 @@
       "root": "/home/rajan/Projects/universal-dev-mcp",
       "allowed_ports": "3000,5173,8080,3333",
       "allowed_commands": "npm install,npm ci,npm run,npm test,npm outdated,npm audit,npm list,npm --version,npx tsc --noEmit,npx eslint,npx prettier --check,git status,git diff,git log,git branch,git show,git remote -v,git fetch,git pull,git add,git commit,git stash,git checkout,git push,node --version"
-    },
-    {
-      "name": "universal-dev-mcp-windows",
-      "root": "C:\\Users\\rj_01\\Coding\\universal-dev-mcp",
-      "allowed_ports": "3000,5173,8080",
-      "allowed_commands": "npm install,npm ci,npm run,npm test,npm outdated,npm audit,npm list,npm --version,npx tsc --noEmit,npx eslint,npx prettier --check,git status,git diff,git log,git branch,git show,git remote -v,git fetch,git pull,git add,git commit,git stash,git checkout,git push,node --version"
     }
   ]
 }
