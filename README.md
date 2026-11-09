@@ -1,24 +1,55 @@
 # universal-dev-mcp
 
-A universal MCP (Model Context Protocol) server that gives AI tools live access to your running local development application. Connect Claude Desktop, Cursor, Windsurf, Zed, Gemini, ChatGPT, or any MCP-compatible tool to your localhost dev server — view pages, call APIs, read and edit source files, run commands, and switch between projects — all with configurable safety guardrails.
+A universal MCP (Model Context Protocol) server and real-time developer platform that bridges AI coding tools to your local development environment. Connect Claude Desktop, Cursor, Windsurf, Zed, Gemini, ChatGPT, or any MCP-compatible tool to your localhost dev server — view pages, call APIs, read and edit source files, run commands, inspect git status, compare diffs, and switch between projects — complete with a modern Sentry-inspired Web UI Dashboard.
 
 ---
 
 ## Table of contents
 
+- [Features](#features)
+- [Web UI Dashboard](#web-ui-dashboard)
 - [How it works](#how-it-works)
-- [Available tools](#available-tools)
+- [Available tools (17 tools)](#available-tools)
 - [Project structure](#project-structure)
 - [Installation](#installation)
 - [Configuration](#configuration)
-- [Connecting to Claude Desktop](#connecting-to-claude-desktop)
+- [Connecting to Claude Desktop, Cursor, Windsurf & Zed](#connecting-to-mcp-compatible-editors)
 - [Switching projects](#switching-projects)
-- [Connecting to MCP-compatible editors](#connecting-to-mcp-compatible-editors)
 - [Connecting to Gemini / ChatGPT (HTTP mode)](#connecting-to-gemini--chatgpt-http-mode)
 - [Security](#security)
+- [Testing](#testing)
 - [npm scripts](#npm-scripts)
 - [Example prompts](#example-prompts)
 - [License](#license)
+
+---
+
+## Features
+
+- **⚡ 17 Powerful MCP Tools**: Inspect project structure, read/edit/patch files, search with regex/glob, run commands, check dev server ports, scrape DOM/meta tags, test APIs, query structured Git status/diffs, scan ports in parallel, and restore backups.
+- **🖥️ Sentry-Themed Web UI Dashboard**: Embedded web application served at `http://localhost:3333/` featuring Project Hub, Live AI Activity Feed, Visual Backup Diff Viewer, Dev Server Radar, and API Playground.
+- **📡 Real-Time Telemetry & Observability**: SSE event stream broadcasting every AI tool call, arguments, execution duration, and diffs as they happen.
+- **🛡️ Auto-Backups & 1-Click Rollback**: Automatic timestamped backups created before any file modification or deletion with 1-click restore.
+- **🔄 Multi-Editor Switcher (`mcp-switch`)**: 1-click project switching across Claude Desktop, Cursor (`mcp.json`), Windsurf (`mcp_config.json`), and Zed (`settings.json`).
+- **🔒 Enterprise Security Guardrails**: Configurable port allowlists, command allowlists, directory boundary confinement, and strict shell injection prevention.
+
+---
+
+## Web UI Dashboard
+
+Start the server in HTTP mode:
+
+```bash
+npm run start:http
+```
+
+Open **`http://localhost:3333/`** in your browser.
+
+- **📁 Project Command Center**: View all configured projects, active Git branches, commit history, and switch active context dynamically without restarting.
+- **⚡ Live AI Activity Feed**: Real-time ticker showing every command Claude or Cursor runs on your machine, with arguments, duration, and output.
+- **🛡️ Backup & Diff Center**: Side-by-side visual diff comparison between current file versions and timestamped `.mcp-backups/` with a 1-click "Restore Version" button.
+- **📡 Dev Server Radar**: Parallel port scanner showing active localhost servers (Vite, Next.js, Express, etc.), response latency, and DOM page inspection.
+- **🧪 API & Command Workbench**: Test local endpoints with custom headers/JSON bodies, or run allowlisted CLI commands with formatted terminal outputs.
 
 ---
 
@@ -82,19 +113,23 @@ All tool calls go through the same security layer regardless of transport: port 
 
 | Tool | Description |
 |---|---|
-| `get_active_project` | Show which project is currently active — name, root, git branch, file count. Use this to confirm a project switch worked. |
-| `get_project_info` | Read package.json, scripts, dependencies, config files, and project structure. Run this first. |
+| `get_active_project` | Show active project — name, root, git branch, file count, and last commit. |
+| `get_project_info` | Read package.json, scripts, dependencies, config files, and 2-level directory tree. |
+| `get_git_status` | Detailed structured Git status: branch, staged/unstaged changes, untracked files, and recent 5 commits. |
+| `get_git_diff` | View working tree or staged diff, optionally filtered to a specific file. |
+| `scan_dev_servers` | Scan localhost ports in parallel to detect running dev servers (Vite, Next.js, CRA, Express, Django). |
 | `check_port` | Verify a dev server is running and responding on a given port. |
-| `view_page` | Fetch a page from a running local dev server — returns title, meta tags, scripts, and visible text. |
+| `view_page` | Fetch HTML from a running dev server — returns title, meta tags, scripts, and visible text. |
 | `get_api_response` | Make HTTP requests (GET/POST/PUT/DELETE/PATCH) to API endpoints on a local server. |
 | `read_file` | Read a source file, optionally limiting output to a line range. |
-| `edit_file` | Overwrite a file with new content. A timestamped backup is created automatically. |
-| `patch_file` | Replace a unique string within a file without rewriting it entirely. Backup created automatically. |
-| `list_files` | Display the project directory as a file tree. |
-| `delete_file` | Delete a file. A timestamped backup is created automatically before deletion. |
-| `move_file` | Move or rename a file within the project. A backup is created automatically. |
-| `search_files` | Search for a text string or regex across all project files with optional filename glob filter. |
-| `run_command` | Run an allowlisted shell command (tests, lint, build, type-check) in the project root. |
+| `edit_file` | Overwrite a file with new content (timestamped backup created automatically). |
+| `patch_file` | Replace a unique string inside a file without rewriting it entirely (auto-backup created). |
+| `restore_backup` | Restore a file to its latest automated backup or a specified backup timestamp. |
+| `list_files` | Display the project directory as a structured file tree. |
+| `delete_file` | Delete a file (timestamped backup created automatically before deletion). |
+| `move_file` | Move or rename a file within the project (backup created automatically). |
+| `search_files` | Search for text or regex across all project files with optional glob filter. |
+| `run_command` | Run an allowlisted shell command (tests, lint, build, type-check) in project root or subfolder (`cwd`). |
 
 ---
 
@@ -376,14 +411,28 @@ cp .mcp-backups/App.tsx.2026-03-13T10-00-00.bak src/App.tsx
 
 ---
 
+## Testing
+
+universal-dev-mcp includes an automated test suite powered by Vitest, testing security guardrails, shell injection prevention, backup creation, and tool execution:
+
+```bash
+npm test
+```
+
+---
+
 ## npm scripts
 
 ```bash
-npm run build         # Compile TypeScript to dist/
+npm run build         # Compile both server and UI (dist/ and dist/public/)
+npm run build:server  # Compile TypeScript server to dist/
+npm run build:ui      # Compile React UI to dist/public/
+npm test              # Run automated Vitest test suite
 npm run start         # Start stdio server (Claude Desktop, Cursor, Windsurf, Zed)
-npm run start:http    # Start HTTP/SSE server (Gemini / ChatGPT)
+npm run start:http    # Start HTTP + SSE server & Web UI Dashboard (http://localhost:3333)
 npm run dev           # stdio server with ts-node (no build step)
 npm run dev:http      # HTTP server with ts-node (no build step)
+npm run dev:ui        # Start Vite dev server for Web UI on port 5174
 ```
 
 ---
