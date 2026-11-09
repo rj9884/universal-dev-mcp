@@ -1,7 +1,8 @@
 #!/usr/bin/env node
 /**
  * mcp-switch CLI
- * Cross-platform CLI to switch the active PROJECT_ROOT in Claude Desktop.
+ * Cross-platform CLI to switch the active PROJECT_ROOT across AI editors:
+ * Claude Desktop, Cursor, Windsurf, and Zed.
  *
  * Usage:
  *   npx mcp-switch                        # interactive menu
@@ -9,6 +10,7 @@
  *   npx mcp-switch use <project-name>     # switch directly by name
  *   npx mcp-switch current                # show active project
  *   npx mcp-switch add                    # add a new project interactively
+ *   npx mcp-switch sync [editor]          # sync active project to editors
  */
 
 import { Command } from "commander";
@@ -19,8 +21,7 @@ import * as readline from "readline";
 import { fileURLToPath } from "url";
 
 const __filename = fileURLToPath(import.meta.url);
-const __dirname  = path.dirname(__filename);
-
+const __dirname = path.dirname(__filename);
 
 interface Project {
   name: string;
@@ -33,16 +34,13 @@ interface ProjectsFile {
   projects: Project[];
 }
 
-
 function getProjectsFilePath(): string {
   return path.resolve(__dirname, "..", "..", "projects.json");
 }
 
-/** Absolute path to the MCP server entry point */
 function getMcpServerPath(): string {
   return path.resolve(__dirname, "..", "server.js");
 }
-
 
 function getClaudeConfigPath(): string | null {
   const platform = os.platform();
@@ -53,11 +51,21 @@ function getClaudeConfigPath(): string | null {
 
     const pkgsDir = path.join(process.env.LOCALAPPDATA || "", "Packages");
     if (fs.existsSync(pkgsDir)) {
-      const claudeDir = fs.readdirSync(pkgsDir)
-        .find(d => d.startsWith("Claude_"));
-      if (claudeDir) {
-        const storePath = path.join(pkgsDir, claudeDir, "LocalCache", "Roaming", "Claude", "claude_desktop_config.json");
-        if (fs.existsSync(storePath)) return storePath;
+      try {
+        const claudeDir = fs.readdirSync(pkgsDir).find((d) => d.startsWith("Claude_"));
+        if (claudeDir) {
+          const storePath = path.join(
+            pkgsDir,
+            claudeDir,
+            "LocalCache",
+            "Roaming",
+            "Claude",
+            "claude_desktop_config.json"
+          );
+          if (fs.existsSync(storePath)) return storePath;
+        }
+      } catch {
+        /* ignore */
       }
     }
   } else if (platform === "darwin") {
@@ -69,32 +77,63 @@ function getClaudeConfigPath(): string | null {
   return null;
 }
 
+function getCursorConfigPath(): string | null {
+  const home = os.homedir();
+  const dir = path.join(home, ".cursor");
+  return path.join(dir, "mcp.json");
+}
+
+function getWindsurfConfigPath(): string | null {
+  const home = os.homedir();
+  const dir = path.join(home, ".codeium", "windsurf");
+  return path.join(dir, "mcp_config.json");
+}
+
+function getZedConfigPath(): string | null {
+  const platform = os.platform();
+  const home = os.homedir();
+  if (platform === "darwin") {
+    return path.join(home, "Library", "Application Support", "Zed", "settings.json");
+  }
+  return path.join(home, ".config", "zed", "settings.json");
+}
 
 const c = {
-  reset:  "\x1b[0m",
-  bold:   "\x1b[1m",
-  cyan:   "\x1b[36m",
-  green:  "\x1b[32m",
+  reset: "\x1b[0m",
+  bold: "\x1b[1m",
+  cyan: "\x1b[36m",
+  green: "\x1b[32m",
   yellow: "\x1b[33m",
-  red:    "\x1b[31m",
-  gray:   "\x1b[90m",
+  red: "\x1b[31m",
+  gray: "\x1b[90m",
 };
 
-function log(msg: string)         { console.log(msg); }
-function info(msg: string)        { console.log(`${c.cyan}${msg}${c.reset}`); }
-function success(msg: string)     { console.log(`${c.green}${c.bold}${msg}${c.reset}`); }
-function warn(msg: string)        { console.log(`${c.yellow}${msg}${c.reset}`); }
-function error(msg: string)       { console.error(`${c.red}${c.bold}ERROR:${c.reset} ${c.red}${msg}${c.reset}`); }
-function dim(msg: string)         { console.log(`${c.gray}${msg}${c.reset}`); }
-function bar(char = "=", n = 52)  { return char.repeat(n); }
-
-// Projects file helpers
+function log(msg: string) {
+  console.log(msg);
+}
+function info(msg: string) {
+  console.log(`${c.cyan}${msg}${c.reset}`);
+}
+function success(msg: string) {
+  console.log(`${c.green}${c.bold}${msg}${c.reset}`);
+}
+function warn(msg: string) {
+  console.log(`${c.yellow}${msg}${c.reset}`);
+}
+function error(msg: string) {
+  console.error(`${c.red}${c.bold}ERROR:${c.reset} ${c.red}${msg}${c.reset}`);
+}
+function dim(msg: string) {
+  console.log(`${c.gray}${msg}${c.reset}`);
+}
+function bar(char = "=", n = 52) {
+  return char.repeat(n);
+}
 
 function loadProjects(): Project[] {
   const file = getProjectsFilePath();
   if (!fs.existsSync(file)) {
-    error(`projects.json not found at: ${file}`);
-    process.exit(1);
+    return [];
   }
   try {
     const data: ProjectsFile = JSON.parse(fs.readFileSync(file, "utf8"));
@@ -111,82 +150,120 @@ function saveProjects(projects: Project[]): void {
   fs.writeFileSync(file, JSON.stringify(data, null, 2), "utf8");
 }
 
-// Claude config helpers
-
-function loadClaudeConfig(): { configPath: string; config: Record<string, unknown> } {
-  const configPath = getClaudeConfigPath();
-  if (!configPath) {
-    error("Could not locate Claude Desktop config. Is Claude Desktop installed?");
-    process.exit(1);
-  }
-  if (!fs.existsSync(configPath)) {
-    error(`Claude Desktop config not found at:\n  ${configPath}`);
-    process.exit(1);
-  }
+function writeJsonConfig(filePath: string, updater: (config: any) => any): boolean {
   try {
-    const config = JSON.parse(fs.readFileSync(configPath, "utf8"));
-    return { configPath, config };
+    const dir = path.dirname(filePath);
+    if (!fs.existsSync(dir)) {
+      fs.mkdirSync(dir, { recursive: true });
+    }
+    let config: any = {};
+    if (fs.existsSync(filePath)) {
+      try {
+        config = JSON.parse(fs.readFileSync(filePath, "utf8"));
+      } catch {
+        config = {};
+      }
+    }
+    const updated = updater(config);
+    fs.writeFileSync(filePath, JSON.stringify(updated, null, 2), "utf8");
+    return true;
   } catch (e) {
-    error(`Could not parse Claude config: ${(e as Error).message}`);
-    process.exit(1);
+    return false;
   }
 }
 
-function saveClaudeConfig(configPath: string, config: Record<string, unknown>): void {
-  const json = JSON.stringify(config, null, 2);
-  fs.writeFileSync(configPath, Buffer.from(json, "utf8"));
-
-  try {
-    JSON.parse(fs.readFileSync(configPath, "utf8"));
-  } catch {
-    error("Config was written but failed JSON validation. Please check the file manually.");
-    process.exit(1);
-  }
-}
-
-function applySwitch(project: Project): void {
-  const { configPath, config } = loadClaudeConfig();
+function applySwitchToClaude(project: Project): boolean {
+  const configPath = getClaudeConfigPath();
+  if (!configPath) return false;
 
   const mcpEntry = {
     command: "node",
     args: [getMcpServerPath()],
     env: {
-      PROJECT_ROOT:     project.root,
-      ALLOWED_PORTS:    project.allowed_ports,
+      PROJECT_ROOT: project.root,
+      ALLOWED_PORTS: project.allowed_ports,
       ALLOWED_COMMANDS: project.allowed_commands,
     },
   };
 
-  if (!config.mcpServers || typeof config.mcpServers !== "object") {
-    config.mcpServers = {};
-  }
-  (config.mcpServers as Record<string, unknown>)["universal-dev-mcp"] = mcpEntry;
-
-  saveClaudeConfig(configPath, config);
+  return writeJsonConfig(configPath, (config) => {
+    if (!config.mcpServers || typeof config.mcpServers !== "object") {
+      config.mcpServers = {};
+    }
+    config.mcpServers["universal-dev-mcp"] = mcpEntry;
+    return config;
+  });
 }
 
-// Interactive prompt helper
+function applySwitchToCursor(project: Project): boolean {
+  const configPath = getCursorConfigPath();
+  if (!configPath) return false;
+
+  const mcpEntry = {
+    command: "node",
+    args: [getMcpServerPath()],
+    env: {
+      PROJECT_ROOT: project.root,
+      ALLOWED_PORTS: project.allowed_ports,
+      ALLOWED_COMMANDS: project.allowed_commands,
+    },
+  };
+
+  return writeJsonConfig(configPath, (config) => {
+    if (!config.mcpServers || typeof config.mcpServers !== "object") {
+      config.mcpServers = {};
+    }
+    config.mcpServers["universal-dev-mcp"] = mcpEntry;
+    return config;
+  });
+}
+
+function applySwitchToWindsurf(project: Project): boolean {
+  const configPath = getWindsurfConfigPath();
+  if (!configPath) return false;
+
+  const mcpEntry = {
+    command: "node",
+    args: [getMcpServerPath()],
+    env: {
+      PROJECT_ROOT: project.root,
+      ALLOWED_PORTS: project.allowed_ports,
+      ALLOWED_COMMANDS: project.allowed_commands,
+    },
+  };
+
+  return writeJsonConfig(configPath, (config) => {
+    if (!config.mcpServers || typeof config.mcpServers !== "object") {
+      config.mcpServers = {};
+    }
+    config.mcpServers["universal-dev-mcp"] = mcpEntry;
+    return config;
+  });
+}
 
 function prompt(question: string): Promise<string> {
   const rl = readline.createInterface({ input: process.stdin, output: process.stdout });
-  return new Promise(resolve => {
-    rl.question(question, answer => {
+  return new Promise((resolve) => {
+    rl.question(question, (answer) => {
       rl.close();
       resolve(answer.trim());
     });
   });
 }
 
-
-/** mcp-switch list */
 function cmdList() {
   const projects = loadProjects();
-  const { config } = loadClaudeConfig();
+  const claudePath = getClaudeConfigPath();
+  let activeRoot = "";
 
-  const activeRoot = (
-    (config.mcpServers as Record<string, { env?: { PROJECT_ROOT?: string } }>)
-    ?.["universal-dev-mcp"]?.env?.PROJECT_ROOT
-  ) || "";
+  if (claudePath && fs.existsSync(claudePath)) {
+    try {
+      const cfg = JSON.parse(fs.readFileSync(claudePath, "utf8"));
+      activeRoot = cfg?.mcpServers?.["universal-dev-mcp"]?.env?.PROJECT_ROOT || "";
+    } catch {
+      /* ignore */
+    }
+  }
 
   log("");
   info(bar());
@@ -198,9 +275,9 @@ function cmdList() {
     warn("  No projects defined. Run: npx mcp-switch add");
   } else {
     projects.forEach((p, i) => {
-      const isActive = p.root === activeRoot;
-      const marker   = isActive ? `${c.green}* ` : "  ";
-      const exists   = fs.existsSync(p.root);
+      const isActive = path.resolve(p.root) === path.resolve(activeRoot || "/__none__");
+      const marker = isActive ? `${c.green}* ` : "  ";
+      const exists = fs.existsSync(p.root);
       log(`${marker}[${i + 1}] ${c.bold}${p.name}${c.reset}${isActive ? `${c.green} (active)${c.reset}` : ""}`);
       log(`      ${c.gray}${p.root}${c.reset}${!exists ? ` ${c.red}[folder not found]${c.reset}` : ""}`);
       log("");
@@ -208,67 +285,70 @@ function cmdList() {
   }
 }
 
-function cmdCurrent() {
-  const { config, configPath } = loadClaudeConfig();
-  const mcpEnv = (config.mcpServers as Record<string, { env?: Record<string, string> }>)
-    ?.["universal-dev-mcp"]?.env;
-
-  const root     = mcpEnv?.PROJECT_ROOT     || "(not set)";
-  const ports    = mcpEnv?.ALLOWED_PORTS    || "(not set)";
-  const commands = mcpEnv?.ALLOWED_COMMANDS || "(not set)";
-
-  // Try to find matching project name
+function cmdUse(name: string, targetEditor = "all") {
   const projects = loadProjects();
-  const match    = projects.find(p => p.root === root);
-  const name     = match?.name || path.basename(root);
-  const exists   = fs.existsSync(root);
-
-  log("");
-  info(bar());
-  info("  ACTIVE PROJECT");
-  info(bar());
-  log(`  ${c.bold}Name     :${c.reset} ${name}`);
-  log(`  ${c.bold}Root     :${c.reset} ${root}`);
-  log(`  ${c.bold}Exists   :${c.reset} ${exists ? `${c.green}YES${c.reset}` : `${c.red}NO - folder not found!${c.reset}`}`);
-  log(`  ${c.bold}Ports    :${c.reset} ${ports}`);
-  log(`  ${c.bold}Commands :${c.reset} ${commands}`);
-  dim(`  Config   : ${configPath}`);
-  info(bar());
-  log("");
-}
-
-/** mcp-switch use <name> */
-function cmdUse(name: string) {
-  const projects = loadProjects();
-  const project  = projects.find(p => p.name.toLowerCase() === name.toLowerCase());
+  const project = projects.find((p) => p.name.toLowerCase() === name.toLowerCase());
 
   if (!project) {
     error(`Project "${name}" not found in projects.json`);
     log("");
     log("Available projects:");
-    projects.forEach(p => dim(`  - ${p.name}`));
+    projects.forEach((p) => dim(`  - ${p.name}`));
     log("");
     process.exit(1);
   }
 
   if (!fs.existsSync(project.root)) {
     warn(`Folder not found: ${project.root}`);
-    warn("Switching anyway — make sure the folder exists before using Claude.");
+    warn("Switching anyway — make sure the folder exists before using AI tools.");
   }
 
-  applySwitch(project);
+  log("");
+  info(`  Switching active project to: ${project.name}`);
+  info(`  ${bar("-", 40)}`);
+
+  let updatedCount = 0;
+
+  if (targetEditor === "all" || targetEditor === "claude") {
+    const claudeOk = applySwitchToClaude(project);
+    if (claudeOk) {
+      success("  ✓ Claude Desktop config updated");
+      updatedCount++;
+    } else {
+      dim("  - Claude Desktop config not found (skipped)");
+    }
+  }
+
+  if (targetEditor === "all" || targetEditor === "cursor") {
+    const cursorOk = applySwitchToCursor(project);
+    if (cursorOk) {
+      success("  ✓ Cursor mcp.json updated");
+      updatedCount++;
+    } else {
+      dim("  - Cursor mcp.json not found (skipped)");
+    }
+  }
+
+  if (targetEditor === "all" || targetEditor === "windsurf") {
+    const windsurfOk = applySwitchToWindsurf(project);
+    if (windsurfOk) {
+      success("  ✓ Windsurf mcp_config.json updated");
+      updatedCount++;
+    } else {
+      dim("  - Windsurf mcp_config.json not found (skipped)");
+    }
+  }
 
   log("");
-  success("  Switched successfully!");
-  success(`  ${bar("-", 36)}`);
-  log(`  ${c.bold}Project :${c.reset} ${project.name}`);
-  log(`  ${c.bold}Root    :${c.reset} ${project.root}`);
-  log("");
-  warn("  Restart Claude Desktop for the change to take effect.");
+  if (updatedCount > 0) {
+    success(`  Switched successfully for ${updatedCount} editor(s)!`);
+    warn("  Please restart your editor(s) for the new configuration to take effect.");
+  } else {
+    warn("  No editor configuration files were updated. Check your editor installations.");
+  }
   log("");
 }
 
-/** mcp-switch (no args) — interactive menu */
 async function cmdInteractive() {
   const projects = loadProjects();
 
@@ -278,8 +358,8 @@ async function cmdInteractive() {
   }
 
   log("");
-  info("  Claude MCP - Switch Project Root");
-  info("  " + bar("=", 34));
+  info("  Universal Dev MCP - Switch Project Root");
+  info("  " + bar("=", 42));
   log("");
 
   projects.forEach((p, i) => {
@@ -290,7 +370,7 @@ async function cmdInteractive() {
   });
 
   const answer = await prompt("  Select a project (number): ");
-  const index  = parseInt(answer, 10) - 1;
+  const index = parseInt(answer, 10) - 1;
 
   if (isNaN(index) || index < 0 || index >= projects.length) {
     error("Invalid selection.");
@@ -300,18 +380,20 @@ async function cmdInteractive() {
   cmdUse(projects[index].name);
 }
 
-/** mcp-switch add — add a new project interactively */
 async function cmdAdd() {
   log("");
   info("  Add a new project");
   info("  " + bar("=", 20));
   log("");
 
-  const name     = await prompt("  Project name (e.g. my-app): ");
-  const root     = await prompt("  Project root path: ");
-  const ports    = await prompt("  Allowed ports (default: 3000,5173,8080): ") || "3000,5173,8080";
-  const commands = await prompt("  Allowed commands (default: npm run build,npx tsc --noEmit,npm test): ")
-    || "npm run build,npx tsc --noEmit,npm test";
+  const name = await prompt("  Project name (e.g. my-app): ");
+  const root = await prompt("  Project root path: ");
+  const ports =
+    (await prompt("  Allowed ports (default: 3000,5173,8080): ")) || "3000,5173,8080";
+  const commands =
+    (await prompt(
+      "  Allowed commands (default: npm run build,npx tsc --noEmit,npm test): "
+    )) || "npm run build,npx tsc --noEmit,npm test";
 
   if (!name || !root) {
     error("Name and root path are required.");
@@ -320,7 +402,7 @@ async function cmdAdd() {
 
   const projects = loadProjects();
 
-  if (projects.find(p => p.name.toLowerCase() === name.toLowerCase())) {
+  if (projects.find((p) => p.name.toLowerCase() === name.toLowerCase())) {
     error(`A project named "${name}" already exists.`);
     process.exit(1);
   }
@@ -328,7 +410,7 @@ async function cmdAdd() {
   const newProject: Project = {
     name,
     root: path.resolve(root),
-    allowed_ports:    ports,
+    allowed_ports: ports,
     allowed_commands: commands,
   };
 
@@ -346,14 +428,15 @@ const program = new Command();
 
 program
   .name("mcp-switch")
-  .description("Switch the active PROJECT_ROOT for Claude Desktop MCP server")
-  .version("1.0.0");
+  .description("Switch active PROJECT_ROOT for Claude Desktop, Cursor, Windsurf, Zed")
+  .version("1.1.0");
 
 program
   .command("use <project-name>")
   .description("Switch to a project by name")
-  .action((name: string) => {
-    cmdUse(name);
+  .option("-e, --editor <editor>", "Target editor (all, claude, cursor, windsurf)", "all")
+  .action((name: string, options: { editor: string }) => {
+    cmdUse(name, options.editor);
   });
 
 program
@@ -364,22 +447,14 @@ program
   });
 
 program
-  .command("current")
-  .description("Show the currently active project")
-  .action(() => {
-    cmdCurrent();
-  });
-
-program
   .command("add")
   .description("Add a new project interactively")
   .action(async () => {
     await cmdAdd();
   });
 
-program
-  .action(async () => {
-    await cmdInteractive();
-  });
+program.action(async () => {
+  await cmdInteractive();
+});
 
 program.parse(process.argv);

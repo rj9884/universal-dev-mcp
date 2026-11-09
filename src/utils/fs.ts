@@ -1,6 +1,6 @@
 import * as fs from "fs";
 import * as path from "path";
-import { PROJECT_ROOT } from "../config.js";
+import { getProjectRoot } from "../config.js";
 
 const IGNORED_DIRS = new Set([
   "node_modules",
@@ -56,12 +56,13 @@ export function getFileTree(
 
 
 export function toRelativePath(filePath: string): string {
-  return path.relative(PROJECT_ROOT, path.resolve(filePath));
+  return path.relative(getProjectRoot(), path.resolve(filePath));
 }
 
 
 export function resolveProjectPath(filePath: string): string {
+  const root = getProjectRoot();
   return path.isAbsolute(filePath)
     ? filePath
-    : path.join(PROJECT_ROOT, filePath);
+    : path.join(root, filePath);
 }

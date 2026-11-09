@@ -3,11 +3,11 @@ import * as path from "path";
 
 dotenv.config();
 
-export const PROJECT_ROOT: string = process.env.PROJECT_ROOT
+let _projectRoot: string = process.env.PROJECT_ROOT
   ? path.resolve(process.env.PROJECT_ROOT)
   : process.cwd();
 
-export const ALLOWED_PORTS: number[] = (
+let _allowedPorts: number[] = (
   process.env.ALLOWED_PORTS || "3000,5173,8080,4200,4000"
 )
   .split(",")
@@ -82,20 +82,92 @@ const DEFAULT_ALLOWED_COMMANDS = [
   "node --version",
 ].join(",");
 
-export const ALLOWED_COMMANDS: string[] = (
+let _allowedCommands: string[] = (
   process.env.ALLOWED_COMMANDS || DEFAULT_ALLOWED_COMMANDS
 )
   .split(",")
   .map((c) => c.trim())
   .filter(Boolean);
 
-export const ALLOWED_WRITE_DIRS: string[] = (
-  process.env.ALLOWED_WRITE_DIRS || PROJECT_ROOT
+let _allowedWriteDirs: string[] = (
+  process.env.ALLOWED_WRITE_DIRS || _projectRoot
 )
   .split(",")
   .map((d) => path.resolve(d.trim()));
 
-export const BACKUP_DIR: string = path.join(PROJECT_ROOT, ".mcp-backups");
+export function getProjectRoot(): string {
+  return _projectRoot;
+}
+
+export function getAllowedPorts(): number[] {
+  return _allowedPorts;
+}
+
+export function getAllowedCommands(): string[] {
+  return _allowedCommands;
+}
+
+export function getAllowedWriteDirs(): string[] {
+  return _allowedWriteDirs;
+}
+
+export function getBackupDir(): string {
+  return path.join(_projectRoot, ".mcp-backups");
+}
+
+export function setActiveProjectConfig(config: {
+  root: string;
+  allowedPorts?: string | number[];
+  allowedCommands?: string | string[];
+  allowedWriteDirs?: string | string[];
+}): void {
+  _projectRoot = path.resolve(config.root);
+
+  if (config.allowedPorts !== undefined) {
+    if (typeof config.allowedPorts === "string") {
+      _allowedPorts = config.allowedPorts
+        .split(",")
+        .map((p) => parseInt(p.trim(), 10))
+        .filter((p) => !isNaN(p));
+    } else {
+      _allowedPorts = config.allowedPorts;
+    }
+  }
+
+  if (config.allowedCommands !== undefined) {
+    if (typeof config.allowedCommands === "string") {
+      _allowedCommands = config.allowedCommands
+        .split(",")
+        .map((c) => c.trim())
+        .filter(Boolean);
+    } else {
+      _allowedCommands = config.allowedCommands;
+    }
+  }
+
+  if (config.allowedWriteDirs !== undefined) {
+    if (typeof config.allowedWriteDirs === "string") {
+      _allowedWriteDirs = config.allowedWriteDirs
+        .split(",")
+        .map((d) => path.resolve(d.trim()));
+    } else {
+      _allowedWriteDirs = config.allowedWriteDirs.map((d) => path.resolve(d));
+    }
+  } else {
+    _allowedWriteDirs = [_projectRoot];
+  }
+}
+
+// Backward-compatible exports using getters
+export const PROJECT_ROOT: string = _projectRoot;
+Object.defineProperty(exports || {}, "PROJECT_ROOT", {
+  get: () => _projectRoot,
+});
+
+export const ALLOWED_PORTS: number[] = _allowedPorts;
+export const ALLOWED_COMMANDS: string[] = _allowedCommands;
+export const ALLOWED_WRITE_DIRS: string[] = _allowedWriteDirs;
+export const BACKUP_DIR: string = path.join(_projectRoot, ".mcp-backups");
 
 export const HTTP_PORT: number = parseInt(
   process.env.HTTP_PORT || "3333",

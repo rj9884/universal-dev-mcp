@@ -1,7 +1,7 @@
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
 import { registerAllTools } from "./tools/index.js";
-import { PROJECT_ROOT, ALLOWED_PORTS, ALLOWED_COMMANDS, validateConfig } from "./config.js";
+import { getProjectRoot, getAllowedPorts, getAllowedCommands, validateConfig } from "./config.js";
 import { cleanOldBackups } from "./utils/backup.js";
 
 const server = new McpServer({
@@ -20,9 +20,9 @@ async function main(): Promise<void> {
 
   // Log to stderr so it does not interfere with the MCP stdio protocol
   console.error("Universal Dev MCP Server started (stdio)");
-  console.error(`Project root:     ${PROJECT_ROOT}`);
-  console.error(`Allowed ports:    ${ALLOWED_PORTS.join(", ")}`);
-  console.error(`Allowed commands: ${ALLOWED_COMMANDS.join(", ")}`);
+  console.error(`Project root:     ${getProjectRoot()}`);
+  console.error(`Allowed ports:    ${getAllowedPorts().join(", ")}`);
+  console.error(`Allowed commands: ${getAllowedCommands().join(", ")}`);
 }
 
 main().catch((err) => {

@@ -1,19 +1,17 @@
 import * as path from "path";
 import {
-  ALLOWED_PORTS,
-  ALLOWED_COMMANDS,
-  PROJECT_ROOT,
-  ALLOWED_WRITE_DIRS,
+  getAllowedPorts,
+  getAllowedCommands,
+  getProjectRoot,
+  getAllowedWriteDirs,
 } from "../config.js";
 
-
 export function isPortAllowed(port: number): boolean {
-  return ALLOWED_PORTS.includes(port);
+  return getAllowedPorts().includes(port);
 }
 
-
 export function isCommandAllowed(cmd: string): boolean {
-  return ALLOWED_COMMANDS.some(
+  return getAllowedCommands().some(
     (allowed) => cmd === allowed || cmd.startsWith(allowed + " ")
   );
 }
@@ -34,7 +32,7 @@ export function hasShellInjectionRisk(cmd: string): boolean {
 
 export function isPathAllowed(filePath: string, writeMode = false): boolean {
   const resolved = path.resolve(filePath);
-  const dirs = writeMode ? ALLOWED_WRITE_DIRS : [PROJECT_ROOT];
+  const dirs = writeMode ? getAllowedWriteDirs() : [getProjectRoot()];
   return dirs.some(
     (dir) => resolved === dir || resolved.startsWith(dir + path.sep)
   );
@@ -49,26 +47,26 @@ export function isPathAllowed(filePath: string, writeMode = false): boolean {
  * binary resolution on Windows.
  */
 export function resolveAllowedCwd(cwd?: string): string | null {
-  const target = cwd && cwd.trim() ? cwd.trim() : PROJECT_ROOT;
+  const projectRoot = getProjectRoot();
+  const target = cwd && cwd.trim() ? cwd.trim() : projectRoot;
   const resolved = path.isAbsolute(target)
     ? path.resolve(target)
-    : path.resolve(PROJECT_ROOT, target);
+    : path.resolve(projectRoot, target);
 
-  if (resolved !== PROJECT_ROOT && !resolved.startsWith(PROJECT_ROOT + path.sep)) {
+  if (resolved !== projectRoot && !resolved.startsWith(projectRoot + path.sep)) {
     return null;
   }
   return resolved;
 }
 
 export function allowedPortsLabel(): string {
-  return ALLOWED_PORTS.join(", ");
+  return getAllowedPorts().join(", ");
 }
 
-
 export function allowedCommandsLabel(): string {
-  return ALLOWED_COMMANDS.map((c) => `  - ${c}`).join("\n");
+  return getAllowedCommands().map((c) => `  - ${c}`).join("\n");
 }
 
 export function allowedWriteDirsLabel(): string {
-  return ALLOWED_WRITE_DIRS.join(", ");
+  return getAllowedWriteDirs().join(", ");
 }

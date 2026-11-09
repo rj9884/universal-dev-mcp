@@ -1,18 +1,23 @@
 import * as fs from "fs";
 import * as path from "path";
-import { BACKUP_DIR, PROJECT_ROOT } from "../config.js";
+import { getBackupDir, getProjectRoot } from "../config.js";
+
+export { getBackupDir };
 
 const MAX_BACKUPS_PER_FILE = 10; 
 const MAX_BACKUP_AGE_MS = 7 * 24 * 60 * 60 * 1000; 
 
-export function ensureBackupDir(): void {
-  if (!fs.existsSync(BACKUP_DIR)) {
-    fs.mkdirSync(BACKUP_DIR, { recursive: true });
+export function ensureBackupDir(): string {
+  const dir = getBackupDir();
+  if (!fs.existsSync(dir)) {
+    fs.mkdirSync(dir, { recursive: true });
   }
+  return dir;
 }
 
 export function backupFile(filePath: string): string {
-  ensureBackupDir();
+  const backupDir = ensureBackupDir();
+  const projectRoot = getProjectRoot();
   const resolved = path.resolve(filePath);
 
   if (!fs.existsSync(resolved)) {
@@ -21,30 +26,31 @@ export function backupFile(filePath: string): string {
 
   const timestamp = new Date().toISOString().replace(/[:.]/g, "-");
   // Include relative path in backup name to avoid collisions between same-named files in different dirs
-  const relPath = path.relative(PROJECT_ROOT, resolved).replace(/[\\/]/g, "__");
+  const relPath = path.relative(projectRoot, resolved).replace(/[\\/]/g, "__");
   const backupName = `${relPath}.${timestamp}.bak`;
-  const backupPath = path.join(BACKUP_DIR, backupName);
+  const backupPath = path.join(backupDir, backupName);
 
   fs.copyFileSync(resolved, backupPath);
   return backupPath;
 }
 
 export function relativeBackupPath(backupPath: string): string {
-  return path.relative(PROJECT_ROOT, backupPath);
+  return path.relative(getProjectRoot(), backupPath);
 }
 
 
 export function cleanOldBackups(): void {
-  if (!fs.existsSync(BACKUP_DIR)) return;
+  const backupDir = getBackupDir();
+  if (!fs.existsSync(backupDir)) return;
 
-  const files = fs.readdirSync(BACKUP_DIR).filter((f) => f.endsWith(".bak"));
+  const files = fs.readdirSync(backupDir).filter((f) => f.endsWith(".bak"));
   const now = Date.now();
 
   // Group by source file prefix (everything before the timestamp)
   const groups = new Map<string, { name: string; mtime: number }[]>();
 
   for (const name of files) {
-    const fullPath = path.join(BACKUP_DIR, name);
+    const fullPath = path.join(backupDir, name);
     let mtime: number;
     try {
       mtime = fs.statSync(fullPath).mtimeMs;
@@ -72,7 +78,7 @@ export function cleanOldBackups(): void {
     entries.sort((a, b) => b.mtime - a.mtime); // newest first
     const toDelete = entries.slice(MAX_BACKUPS_PER_FILE);
     for (const { name } of toDelete) {
-      try { fs.unlinkSync(path.join(BACKUP_DIR, name)); } catch { /* ignore */ }
+      try { fs.unlinkSync(path.join(backupDir, name)); } catch { /* ignore */ }
     }
   }
 }
