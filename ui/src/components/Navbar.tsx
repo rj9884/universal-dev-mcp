@@ -1,5 +1,5 @@
 import React from "react";
-import { FolderGit2, Activity, ShieldCheck, Radio, Terminal } from "lucide-react";
+import { FolderGit2, Activity, ShieldCheck, Radio, Terminal, Sparkles, SlidersHorizontal } from "lucide-react";
 
 interface NavbarProps {
   activeTab: string;
@@ -15,6 +15,7 @@ export const Navbar: React.FC<NavbarProps> = ({
   activityCount,
 }) => {
   const tabs = [
+    { id: "home", label: "Overview", icon: Sparkles },
     { id: "projects", label: "Projects", icon: FolderGit2 },
     { id: "activity", label: "Live Activity", icon: Activity, badge: activityCount > 0 ? activityCount : undefined },
     { id: "backups", label: "Backups & Diffs", icon: ShieldCheck },
@@ -27,22 +28,27 @@ export const Navbar: React.FC<NavbarProps> = ({
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex items-center justify-between h-16">
           {/* Brand Logo & Name */}
-          <div className="flex items-center space-x-3">
-            <div className="w-9 h-9 rounded-md bg-surface-night border border-hairline-violet flex items-center justify-center shadow-inner">
-              <span className="text-accent-lime font-mono font-bold text-lg">⚡</span>
+          <button
+            onClick={() => setActiveTab("home")}
+            className="flex items-center space-x-3 text-left focus:outline-none group"
+          >
+            <div className="w-9 h-9 rounded-md bg-surface-night border border-hairline-violet flex items-center justify-center shadow-inner group-hover:border-accent-lime/60 transition-colors">
+              <span className="text-accent-lime font-mono font-bold text-lg group-hover:scale-110 transition-transform">⚡</span>
             </div>
             <div>
               <div className="flex items-center space-x-2">
-                <span className="font-bold tracking-tight text-white text-lg">UNIVERSAL DEV</span>
+                <span className="font-bold tracking-tight text-white text-lg group-hover:text-accent-lime transition-colors">
+                  UNIVERSAL DEV
+                </span>
                 <span className="bg-accent-lime text-ink-deep text-xs font-bold px-1.5 py-0.5 rounded-[4px] uppercase tracking-[0.2px]">
                   MCP
                 </span>
               </div>
               <p className="text-[11px] font-mono text-on-dark-muted hidden sm:block">
-                Bridge AI tools to local localhost
+                Bridge AI tools to localhost
               </p>
             </div>
-          </div>
+          </button>
 
           {/* Navigation Tabs */}
           <nav className="flex space-x-1 sm:space-x-2">
@@ -71,9 +77,19 @@ export const Navbar: React.FC<NavbarProps> = ({
             })}
           </nav>
 
-          {/* Connection Status & Active Project Pill */}
+          {/* Connection Status & Mode Pill */}
           <div className="flex items-center space-x-3">
-            <div className="flex items-center space-x-1.5 bg-surface-night px-2.5 py-1 rounded-[4px] border border-hairline-violet text-xs font-mono">
+            {/* Quick Switch Button */}
+            <button
+              onClick={() => setActiveTab(activeTab === "home" ? "projects" : "home")}
+              className="hidden lg:flex items-center space-x-1.5 bg-surface-night hover:bg-surface-card border border-hairline-violet px-3 py-1.5 rounded text-xs font-mono text-on-dark-muted hover:text-white transition-colors"
+            >
+              <SlidersHorizontal className="w-3.5 h-3.5 text-accent-pink" />
+              <span>{activeTab === "home" ? "Console View" : "Overview"}</span>
+            </button>
+
+            {/* SSE Status Pill */}
+            <div className="flex items-center space-x-1.5 bg-surface-night px-2.5 py-1.5 rounded-[4px] border border-hairline-violet text-xs font-mono">
               <span
                 className={`w-2 h-2 rounded-full ${
                   sseStatus === "connected"

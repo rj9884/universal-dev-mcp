@@ -1,20 +1,23 @@
 import React, { useState, useEffect } from "react";
 import { Navbar } from "./components/Navbar.js";
+import { Home } from "./components/Home.js";
 import { ProjectHub } from "./components/ProjectHub.js";
 import { ActivityFeed } from "./components/ActivityFeed.js";
 import { BackupCenter } from "./components/BackupCenter.js";
 import { DevRadar } from "./components/DevRadar.js";
 import { ApiPlayground } from "./components/ApiPlayground.js";
 import { useActivityStream } from "./hooks/useActivityStream.js";
-import { fetchServerInfo, ServerInfo } from "./api/client.js";
+import { fetchServerInfo, fetchEditorConfigs, ServerInfo } from "./api/client.js";
 
 export const App: React.FC = () => {
-  const [activeTab, setActiveTab] = useState<string>("projects");
+  const [activeTab, setActiveTab] = useState<string>("home");
   const [serverInfo, setServerInfo] = useState<ServerInfo | null>(null);
+  const [editorConfigs, setEditorConfigs] = useState<Record<string, unknown>>({});
   const { events, status: sseStatus, clear: clearEvents } = useActivityStream();
 
   useEffect(() => {
     fetchServerInfo().then(setServerInfo).catch(() => {});
+    fetchEditorConfigs().then(setEditorConfigs).catch(() => {});
   }, []);
 
   return (
@@ -29,6 +32,14 @@ export const App: React.FC = () => {
 
       {/* Main Content Area */}
       <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        {activeTab === "home" && (
+          <Home
+            onNavigate={setActiveTab}
+            editorConfigs={editorConfigs}
+            activeProjectRoot={serverInfo?.project_root}
+            toolsCount={serverInfo?.tools_count}
+          />
+        )}
         {activeTab === "projects" && <ProjectHub />}
         {activeTab === "activity" && <ActivityFeed events={events} onClear={clearEvents} />}
         {activeTab === "backups" && <BackupCenter />}
@@ -36,7 +47,7 @@ export const App: React.FC = () => {
         {activeTab === "playground" && <ApiPlayground />}
       </main>
 
-      {/* Sentry Signature Lime Squiggly Divider */}
+      {/* Signature Lime Squiggly Divider */}
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 w-full mt-16">
         <svg
           viewBox="0 0 1200 12"
@@ -54,7 +65,7 @@ export const App: React.FC = () => {
         </svg>
       </div>
 
-      {/* Sentry Developer Tools Footer */}
+      {/* Developer Tools Footer */}
       <footer className="border-t border-hairline-violet bg-surface-night/80 py-8 text-xs font-mono text-on-dark-muted">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex flex-col sm:flex-row items-center justify-between gap-4">
           <div className="flex items-center space-x-2">
@@ -67,7 +78,7 @@ export const App: React.FC = () => {
             <span>•</span>
             <span>Port 3333</span>
             <span>•</span>
-            <span className="text-white">TypeScript & Sentry UI</span>
+            <span className="text-white">TypeScript & React Dashboard</span>
           </div>
         </div>
       </footer>

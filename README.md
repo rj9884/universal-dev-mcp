@@ -1,6 +1,6 @@
 # universal-dev-mcp
 
-A universal MCP (Model Context Protocol) server and real-time developer platform that bridges AI coding tools to your local development environment. Connect Claude Desktop, Cursor, Windsurf, Zed, Gemini, ChatGPT, or any MCP-compatible tool to your localhost dev server — view pages, call APIs, read and edit source files, run commands, inspect git status, compare diffs, and switch between projects — complete with a modern Sentry-inspired Web UI Dashboard.
+A universal MCP (Model Context Protocol) server and real-time developer platform that bridges AI coding tools to your local development environment. Connect Claude Desktop, Cursor, Windsurf, Zed, Gemini, ChatGPT, or any MCP-compatible tool to your localhost dev server — view pages, call APIs, read and edit source files, run commands, inspect git status, compare diffs, and switch between projects — complete with a modern real-time Web UI Dashboard.
 
 ---
 
@@ -27,7 +27,7 @@ A universal MCP (Model Context Protocol) server and real-time developer platform
 ## Features
 
 - **⚡ 17 Powerful MCP Tools**: Inspect project structure, read/edit/patch files, search with regex/glob, run commands, check dev server ports, scrape DOM/meta tags, test APIs, query structured Git status/diffs, scan ports in parallel, and restore backups.
-- **🖥️ Sentry-Themed Web UI Dashboard**: Embedded web application served at `http://localhost:3333/` featuring Project Hub, Live AI Activity Feed, Visual Backup Diff Viewer, Dev Server Radar, and API Playground.
+- **🖥️ Embedded Web UI Dashboard**: Embedded web application served at `http://localhost:3333/` featuring Project Hub, Live AI Activity Feed, Visual Backup Diff Viewer, Dev Server Radar, and API Playground.
 - **📡 Real-Time Telemetry & Observability**: SSE event stream broadcasting every AI tool call, arguments, execution duration, and diffs as they happen.
 - **🛡️ Auto-Backups & 1-Click Rollback**: Automatic timestamped backups created before any file modification or deletion with 1-click restore.
 - **🔄 Multi-Editor Switcher (`mcp-switch`)**: 1-click project switching across Claude Desktop, Cursor (`mcp.json`), Windsurf (`mcp_config.json`), and Zed (`settings.json`).
