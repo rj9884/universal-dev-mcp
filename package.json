@@ -8,12 +8,15 @@
     "mcp-switch": "./dist/cli/switch.js"
   },
   "scripts": {
-    "build": "tsc",
-    "prepare": "npm run build",
+    "build:server": "tsc",
+    "build:ui": "npm --prefix ui run build",
+    "build": "npm run build:server && npm run build:ui",
+    "prepare": "npm run build:server",
     "start": "node dist/server.js",
     "start:http": "node dist/http-server.js",
     "dev": "ts-node src/server.ts",
-    "dev:http": "ts-node src/http-server.ts"
+    "dev:http": "ts-node src/http-server.ts",
+    "dev:ui": "npm --prefix ui run dev"
   },
   "keywords": [
     "mcp",
