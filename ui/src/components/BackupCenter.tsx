@@ -90,126 +90,141 @@ export const BackupCenter: React.FC = () => {
           </p>
         </div>
       ) : (
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <div className="grid grid-cols-1 xl:grid-cols-12 gap-6 w-full items-stretch">
           {/* Backups List Sidebar */}
-          <div className="lg:col-span-1 space-y-2">
-            <h3 className="text-xs font-bold text-on-dark-muted uppercase tracking-[0.2px] mb-2 flex items-center justify-between">
-              <span>Timestamped Backups ({backups.length})</span>
-              <button
-                onClick={loadBackups}
-                className="text-accent-lime hover:underline text-[10px]"
-              >
-                Refresh
-              </button>
-            </h3>
+          <div className="xl:col-span-4 bg-surface-night border border-hairline-violet rounded-xl p-5 flex flex-col justify-between">
+            <div>
+              <div className="flex items-center justify-between pb-3 border-b border-hairline-violet mb-3">
+                <span className="text-xs font-bold text-white uppercase tracking-[0.2px]">
+                  Timestamped Backups ({backups.length})
+                </span>
+                <button
+                  onClick={loadBackups}
+                  className="text-accent-lime hover:underline text-xs font-mono"
+                >
+                  Refresh
+                </button>
+              </div>
 
-            <div className="space-y-2 max-h-[600px] overflow-y-auto pr-1">
-              {backups.map((b) => {
-                const isSelected = selectedBackup?.filename === b.filename;
-                const dateStr = new Date(b.modifiedAt).toLocaleString();
+              <div className="space-y-2 max-h-[650px] overflow-y-auto pr-1">
+                {backups.map((b) => {
+                  const isSelected = selectedBackup?.filename === b.filename;
+                  const dateStr = new Date(b.modifiedAt).toLocaleString();
 
-                return (
-                  <div
-                    key={b.filename}
-                    onClick={() => handleSelectBackup(b)}
-                    className={`p-3 rounded-lg border cursor-pointer transition ${
-                      isSelected
-                        ? "bg-surface-night border-accent-lime"
-                        : "bg-surface-night/50 border-hairline-violet hover:border-hairline-cool/40"
-                    }`}
-                  >
-                    <div className="flex items-center justify-between">
-                      <span className="font-mono text-xs font-bold text-white truncate" title={b.originalRel}>
-                        {b.originalRel}
-                      </span>
-                      <span className="text-[10px] font-mono text-on-dark-muted">
-                        {(b.sizeBytes / 1024).toFixed(1)} KB
-                      </span>
+                  return (
+                    <div
+                      key={b.filename}
+                      onClick={() => handleSelectBackup(b)}
+                      className={`p-3 rounded-lg border cursor-pointer transition ${
+                        isSelected
+                          ? "bg-ink-deep border-accent-lime shadow-[0_0_12px_rgba(194,239,78,0.15)] ring-1 ring-accent-lime/40"
+                          : "bg-ink-deep/60 border-hairline-violet hover:border-hairline-cool/40"
+                      }`}
+                    >
+                      <div className="flex items-center justify-between">
+                        <span className="font-mono text-xs font-bold text-white truncate" title={b.originalRel}>
+                          {b.originalRel}
+                        </span>
+                        <span className="text-[10px] font-mono text-on-dark-faint bg-surface-night px-1.5 py-0.5 rounded border border-hairline-violet">
+                          {(b.sizeBytes / 1024).toFixed(1)} KB
+                        </span>
+                      </div>
+                      <div className="flex items-center justify-between mt-2.5 text-[11px] font-mono text-on-dark-muted">
+                        <span className="text-[10px]">{dateStr}</span>
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleRestore(b);
+                          }}
+                          title="Restore this version"
+                          className="btn-cap bg-surface-night hover:bg-white hover:text-ink-deep border border-hairline-violet text-accent-lime px-2.5 py-1 rounded text-[11px] flex items-center space-x-1"
+                        >
+                          <RotateCcw className="w-3 h-3" />
+                          <span>Restore</span>
+                        </button>
+                      </div>
                     </div>
-                    <div className="flex items-center justify-between mt-2 text-[10px] font-mono text-on-dark-muted">
-                      <span>{dateStr}</span>
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          handleRestore(b);
-                        }}
-                        title="Restore this version"
-                        className="btn-cap bg-ink-deep hover:bg-white hover:text-ink-deep border border-hairline-violet text-accent-lime px-2 py-0.5 rounded text-[10px] flex items-center space-x-1"
-                      >
-                        <RotateCcw className="w-2.5 h-2.5" />
-                        <span>Restore</span>
-                      </button>
-                    </div>
-                  </div>
-                );
-              })}
+                  );
+                })}
+              </div>
+            </div>
+
+            <div className="pt-3 mt-3 border-t border-hairline-violet text-[11px] font-mono text-on-dark-faint">
+              <span>Automatic rollback snapshots in <code className="text-white">.mcp-backups/</code></span>
             </div>
           </div>
 
           {/* Diff Viewer Pane */}
-          <div className="lg:col-span-2 bg-surface-night border border-hairline-violet rounded-xl p-5 flex flex-col">
-            <div className="flex items-center justify-between border-b border-hairline-violet pb-3 mb-4">
-              <div>
-                <span className="text-[10px] font-mono uppercase text-on-dark-muted block">
-                  Diff Comparison
-                </span>
-                <span className="text-sm font-bold text-white font-mono">
-                  {selectedBackup ? selectedBackup.originalRel : "Select a backup"}
-                </span>
+          <div className="xl:col-span-8 bg-surface-night border border-hairline-violet rounded-xl p-6 flex flex-col justify-between">
+            <div>
+              <div className="flex items-center justify-between border-b border-hairline-violet pb-3 mb-4">
+                <div>
+                  <span className="text-[10px] font-mono uppercase text-on-dark-muted block">
+                    Side-by-Side Visual Diff
+                  </span>
+                  <span className="text-base font-bold text-white font-mono">
+                    {selectedBackup ? selectedBackup.originalRel : "Select a backup"}
+                  </span>
+                </div>
+
+                {selectedBackup && (
+                  <button
+                    onClick={() => handleRestore(selectedBackup)}
+                    className="btn-cap bg-accent-lime text-ink-deep hover:bg-white font-bold px-4 py-2 rounded-md text-xs flex items-center space-x-1.5 shadow-md"
+                  >
+                    <RotateCcw className="w-3.5 h-3.5" />
+                    <span>Restore Version</span>
+                  </button>
+                )}
               </div>
 
-              {selectedBackup && (
-                <button
-                  onClick={() => handleRestore(selectedBackup)}
-                  className="btn-cap bg-accent-lime text-ink-deep hover:bg-white font-bold px-3 py-1.5 rounded-md text-xs flex items-center space-x-1.5 shadow-glow"
-                >
-                  <RotateCcw className="w-3.5 h-3.5" />
-                  <span>Restore Version</span>
-                </button>
+              {diffLoading ? (
+                <div className="p-16 text-center text-xs font-mono text-on-dark-muted">
+                  Loading diff...
+                </div>
+              ) : diffData ? (
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 font-mono text-xs overflow-y-auto max-h-[620px] min-h-[420px]">
+                  {/* Backup Version */}
+                  <div className="bg-ink-deep border border-hairline-violet rounded-lg p-4 flex flex-col">
+                    <div className="flex items-center justify-between pb-2 border-b border-hairline-violet mb-2">
+                      <span className="text-xs font-bold text-accent-pink flex items-center space-x-1">
+                        <span>● Backup Version</span>
+                      </span>
+                      <span className="text-[10px] text-on-dark-muted">
+                        {new Date(selectedBackup?.modifiedAt || 0).toLocaleTimeString()}
+                      </span>
+                    </div>
+                    <pre className="text-white text-xs overflow-x-auto whitespace-pre-wrap leading-relaxed flex-1 select-text">
+                      {diffData.backupContent || "(empty file)"}
+                    </pre>
+                  </div>
+
+                  {/* Current Working Version */}
+                  <div className="bg-ink-deep border border-hairline-violet rounded-lg p-4 flex flex-col">
+                    <div className="flex items-center justify-between pb-2 border-b border-hairline-violet mb-2">
+                      <span className="text-xs font-bold text-accent-lime flex items-center space-x-1">
+                        <span>● Live Working File</span>
+                      </span>
+                      <span className="text-[10px] text-on-dark-muted">
+                        {diffData.currentExists ? "On Disk" : "Deleted"}
+                      </span>
+                    </div>
+                    <pre className="text-white text-xs overflow-x-auto whitespace-pre-wrap leading-relaxed flex-1 select-text">
+                      {diffData.currentContent || (diffData.currentExists ? "(empty file)" : "[File does not exist on disk]")}
+                    </pre>
+                  </div>
+                </div>
+              ) : (
+                <div className="p-16 text-center text-xs font-mono text-on-dark-muted">
+                  Select a backup from the left to inspect content and differences.
+                </div>
               )}
             </div>
 
-            {diffLoading ? (
-              <div className="p-12 text-center text-xs font-mono text-on-dark-muted">
-                Loading diff...
-              </div>
-            ) : diffData ? (
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 font-mono text-xs overflow-y-auto max-h-[550px]">
-                {/* Backup Version */}
-                <div className="bg-ink-deep border border-hairline-violet rounded-lg p-3">
-                  <div className="flex items-center justify-between pb-2 border-b border-hairline-violet mb-2">
-                    <span className="text-[11px] font-bold text-accent-violet">
-                      Backup File Content
-                    </span>
-                    <span className="text-[10px] text-on-dark-muted">
-                      {new Date(selectedBackup?.modifiedAt || 0).toLocaleTimeString()}
-                    </span>
-                  </div>
-                  <pre className="text-white text-[11px] overflow-x-auto whitespace-pre-wrap leading-relaxed">
-                    {diffData.backupContent || "(empty file)"}
-                  </pre>
-                </div>
-
-                {/* Current Working Version */}
-                <div className="bg-ink-deep border border-hairline-violet rounded-lg p-3">
-                  <div className="flex items-center justify-between pb-2 border-b border-hairline-violet mb-2">
-                    <span className="text-[11px] font-bold text-accent-lime">
-                      Current Live Version
-                    </span>
-                    <span className="text-[10px] text-on-dark-muted">
-                      {diffData.currentExists ? "On Disk" : "Deleted"}
-                    </span>
-                  </div>
-                  <pre className="text-white text-[11px] overflow-x-auto whitespace-pre-wrap leading-relaxed">
-                    {diffData.currentContent || (diffData.currentExists ? "(empty file)" : "[File does not exist on disk]")}
-                  </pre>
-                </div>
-              </div>
-            ) : (
-              <div className="p-12 text-center text-xs font-mono text-on-dark-muted">
-                Select a backup from the left to inspect content and differences.
-              </div>
-            )}
+            <div className="pt-3 mt-4 border-t border-hairline-violet flex items-center justify-between text-xs font-mono text-on-dark-muted">
+              <span>Tool: <code className="text-white">restore_backup</code></span>
+              <span className="text-accent-lime">1-Click atomic restore</span>
+            </div>
           </div>
         </div>
       )}

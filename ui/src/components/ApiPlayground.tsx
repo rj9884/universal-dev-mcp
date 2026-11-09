@@ -96,96 +96,112 @@ export const ApiPlayground: React.FC = () => {
 
       {activeTab === "api" ? (
         /* API Tester View */
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <div className="grid grid-cols-1 xl:grid-cols-12 gap-6 w-full items-stretch">
           <form
             onSubmit={handleSendApi}
-            className="bg-surface-night border border-hairline-violet rounded-xl p-5 space-y-4 font-mono text-xs"
+            className="xl:col-span-5 bg-surface-night border border-hairline-violet rounded-xl p-6 space-y-4 font-mono text-xs flex flex-col justify-between"
           >
-            <h3 className="font-bold text-white text-sm border-b border-hairline-violet pb-2">
-              Request Builder
-            </h3>
+            <div className="space-y-4">
+              <h3 className="font-bold text-white text-sm border-b border-hairline-violet pb-3">
+                Localhost Request Builder
+              </h3>
 
-            <div className="flex gap-2">
-              <select
-                value={apiMethod}
-                onChange={(e) => setApiMethod(e.target.value)}
-                className="bg-ink-deep border border-hairline-violet rounded-md px-3 py-2 text-white font-bold focus:outline-none focus:border-accent-lime"
+              <div className="flex gap-2">
+                <select
+                  value={apiMethod}
+                  onChange={(e) => setApiMethod(e.target.value)}
+                  className="bg-ink-deep border border-hairline-violet rounded-md px-3 py-2 text-white font-bold focus:outline-none focus:border-accent-lime"
+                >
+                  <option value="GET">GET</option>
+                  <option value="POST">POST</option>
+                  <option value="PUT">PUT</option>
+                  <option value="DELETE">DELETE</option>
+                  <option value="PATCH">PATCH</option>
+                </select>
+
+                <input
+                  type="number"
+                  value={apiPort}
+                  onChange={(e) => setApiPort(Number(e.target.value))}
+                  placeholder="Port"
+                  className="w-28 bg-ink-deep border border-hairline-violet rounded-md px-3 py-2 text-white focus:outline-none focus:border-accent-lime"
+                />
+
+                <input
+                  type="text"
+                  value={apiPath}
+                  onChange={(e) => setApiPath(e.target.value)}
+                  placeholder="/api/users"
+                  className="flex-1 bg-ink-deep border border-hairline-violet rounded-md px-3 py-2 text-white focus:outline-none focus:border-accent-lime"
+                />
+              </div>
+
+              <div>
+                <label className="block text-on-dark-faint text-[10px] uppercase font-bold mb-1">
+                  Custom Headers (JSON)
+                </label>
+                <input
+                  type="text"
+                  value={apiHeaders}
+                  onChange={(e) => setApiHeaders(e.target.value)}
+                  placeholder='{"Authorization": "Bearer token"}'
+                  className="w-full bg-ink-deep border border-hairline-violet rounded-md px-3 py-2 text-white focus:outline-none focus:border-accent-lime text-xs"
+                />
+              </div>
+
+              <div>
+                <label className="block text-on-dark-faint text-[10px] uppercase font-bold mb-1">
+                  Request Body (JSON)
+                </label>
+                <textarea
+                  rows={6}
+                  value={apiBody}
+                  onChange={(e) => setApiBody(e.target.value)}
+                  placeholder='{"key": "value"}'
+                  className="w-full bg-ink-deep border border-hairline-violet rounded-md px-3 py-2 text-white focus:outline-none focus:border-accent-lime text-xs"
+                />
+              </div>
+            </div>
+
+            <div className="pt-4 border-t border-hairline-violet">
+              <button
+                type="submit"
+                disabled={apiLoading}
+                className="btn-cap w-full bg-white text-ink-deep hover:bg-slate-100 py-2.5 rounded-md font-bold text-xs flex items-center justify-center space-x-2 shadow-md"
               >
-                <option value="GET">GET</option>
-                <option value="POST">POST</option>
-                <option value="PUT">PUT</option>
-                <option value="DELETE">DELETE</option>
-                <option value="PATCH">PATCH</option>
-              </select>
-
-              <input
-                type="number"
-                value={apiPort}
-                onChange={(e) => setApiPort(Number(e.target.value))}
-                placeholder="Port"
-                className="w-24 bg-ink-deep border border-hairline-violet rounded-md px-3 py-2 text-white focus:outline-none focus:border-accent-lime"
-              />
-
-              <input
-                type="text"
-                value={apiPath}
-                onChange={(e) => setApiPath(e.target.value)}
-                placeholder="/api/users"
-                className="flex-1 bg-ink-deep border border-hairline-violet rounded-md px-3 py-2 text-white focus:outline-none focus:border-accent-lime"
-              />
+                <Send className="w-3.5 h-3.5" />
+                <span>{apiLoading ? "Sending Request..." : "Send Request"}</span>
+              </button>
             </div>
-
-            <div>
-              <label className="block text-on-dark-muted text-[10px] uppercase font-bold mb-1">
-                Custom Headers (JSON)
-              </label>
-              <input
-                type="text"
-                value={apiHeaders}
-                onChange={(e) => setApiHeaders(e.target.value)}
-                placeholder='{"Authorization": "Bearer token"}'
-                className="w-full bg-ink-deep border border-hairline-violet rounded-md px-3 py-2 text-white focus:outline-none focus:border-accent-lime"
-              />
-            </div>
-
-            <div>
-              <label className="block text-on-dark-muted text-[10px] uppercase font-bold mb-1">
-                Request Body (JSON)
-              </label>
-              <textarea
-                rows={5}
-                value={apiBody}
-                onChange={(e) => setApiBody(e.target.value)}
-                placeholder='{"key": "value"}'
-                className="w-full bg-ink-deep border border-hairline-violet rounded-md px-3 py-2 text-white focus:outline-none focus:border-accent-lime text-[11px]"
-              />
-            </div>
-
-            <button
-              type="submit"
-              disabled={apiLoading}
-              className="btn-cap w-full bg-white text-ink-deep hover:bg-surface-press-stronger py-2.5 rounded-md font-bold text-xs flex items-center justify-center space-x-2 shadow-glow"
-            >
-              <Send className="w-3.5 h-3.5" />
-              <span>{apiLoading ? "Sending Request..." : "Send Request"}</span>
-            </button>
           </form>
 
           {/* Response Viewer */}
-          <div className="bg-surface-night border border-hairline-violet rounded-xl p-5 flex flex-col font-mono text-xs">
-            <h3 className="font-bold text-white text-sm border-b border-hairline-violet pb-2 mb-3">
-              API Response
-            </h3>
-            <div className="bg-ink-deep border border-hairline-violet rounded-lg p-4 flex-1 overflow-y-auto max-h-[460px]">
-              {apiResult ? (
-                <pre className="text-white whitespace-pre-wrap leading-relaxed text-[11px]">
-                  {apiResult}
-                </pre>
-              ) : (
-                <div className="text-center py-20 text-on-dark-muted">
-                  Configure request details on the left and click "Send Request" to test your local dev API.
-                </div>
-              )}
+          <div className="xl:col-span-7 bg-surface-night border border-hairline-violet rounded-xl p-6 flex flex-col justify-between font-mono text-xs">
+            <div>
+              <div className="flex items-center justify-between border-b border-hairline-violet pb-3 mb-4">
+                <h3 className="font-bold text-white text-sm">
+                  API Response Inspector
+                </h3>
+                <span className="text-[11px] text-on-dark-faint">
+                  Calls <code className="text-accent-lime">get_api_response</code>
+                </span>
+              </div>
+              <div className="bg-ink-deep border border-hairline-violet rounded-lg p-4 max-h-[580px] min-h-[380px] overflow-y-auto">
+                {apiResult ? (
+                  <pre className="text-white whitespace-pre-wrap leading-relaxed text-xs select-text">
+                    {apiResult}
+                  </pre>
+                ) : (
+                  <div className="text-center py-24 text-on-dark-muted">
+                    Configure request details on the left and click "Send Request" to test your local dev API.
+                  </div>
+                )}
+              </div>
+            </div>
+
+            <div className="pt-3 mt-4 border-t border-hairline-violet flex items-center justify-between text-xs text-on-dark-muted">
+              <span>Localhost HTTP dispatcher</span>
+              <span className="text-accent-lime">Safe loopback request</span>
             </div>
           </div>
         </div>

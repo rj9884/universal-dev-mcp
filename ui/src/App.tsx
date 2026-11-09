@@ -31,7 +31,7 @@ export const App: React.FC = () => {
       />
 
       {/* Main Content Area */}
-      <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-8">
+      <main className="flex-1 max-w-[1720px] w-full mx-auto px-4 sm:px-6 lg:px-10 py-8">
         {activeTab === "home" && (
           <Home
             onNavigate={setActiveTab}
@@ -48,7 +48,7 @@ export const App: React.FC = () => {
       </main>
 
       {/* Signature Lime Squiggly Divider */}
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 w-full mt-16">
+      <div className="max-w-[1720px] mx-auto px-4 sm:px-6 lg:px-10 w-full mt-16">
         <svg
           viewBox="0 0 1200 12"
           fill="none"
@@ -67,7 +67,7 @@ export const App: React.FC = () => {
 
       {/* Developer Tools Footer */}
       <footer className="border-t border-hairline-violet bg-surface-night/80 py-8 text-xs font-mono text-on-dark-muted">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex flex-col sm:flex-row items-center justify-between gap-4">
+        <div className="max-w-[1720px] mx-auto px-4 sm:px-6 lg:px-10 flex flex-col sm:flex-row items-center justify-between gap-4">
           <div className="flex items-center space-x-2">
             <span className="text-accent-lime font-bold">⚡ Universal Dev MCP</span>
             <span>—</span>

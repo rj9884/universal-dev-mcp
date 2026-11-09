@@ -7,9 +7,11 @@ import {
   FolderGit2,
   Check,
   Copy,
-  Play,
   Activity,
   ChevronRight,
+  Cpu,
+  Globe,
+  FileCode2,
 } from "lucide-react";
 
 interface HomeProps {
@@ -29,7 +31,6 @@ export const Home: React.FC<HomeProps> = ({
 }) => {
   const [selectedEditor, setSelectedEditor] = useState<string>("claude");
   const [copied, setCopied] = useState<boolean>(false);
-  const [demoScrub, setDemoScrub] = useState<number>(42);
 
   const handleCopy = (text: string) => {
     navigator.clipboard.writeText(text);
@@ -56,33 +57,32 @@ export const Home: React.FC<HomeProps> = ({
   );
 
   return (
-    <div className="space-y-20 pb-16">
-      {/* 1. Hero Announcement Banner */}
+    <div className="space-y-20 pb-16 w-full">
+      {/* 1. Announcement Banner */}
       <div className="flex justify-center pt-2">
         <button
-          onClick={() => onNavigate("radar")}
-          className="group inline-flex items-center space-x-2 bg-surface-night/90 hover:bg-surface-night border border-hairline-violet hover:border-accent-pink/40 px-4 py-1.5 rounded-full text-xs font-mono text-on-dark-muted hover:text-white transition-all duration-200 shadow-lg hover:shadow-accent-pink/10"
+          onClick={() => onNavigate("projects")}
+          className="group inline-flex items-center space-x-2 bg-surface-night/90 hover:bg-surface-night border border-hairline-violet hover:border-accent-lime/40 px-5 py-2 rounded-full text-xs font-mono text-on-dark-muted hover:text-white transition-all duration-200 shadow-lg hover:shadow-accent-lime/10"
         >
-          <span className="w-2 h-2 rounded-full bg-accent-pink animate-pulse" />
-          <span>Universal Dev MCP v1.0.0 is live: Bridge Claude, Cursor & Windsurf to localhost</span>
-          <ArrowRight className="w-3.5 h-3.5 text-accent-pink group-hover:translate-x-0.5 transition-transform" />
+          <span className="w-2 h-2 rounded-full bg-accent-lime animate-pulse" />
+          <span>Model Context Protocol (MCP) Server for Claude Desktop, Cursor, Windsurf & Zed</span>
+          <ArrowRight className="w-3.5 h-3.5 text-accent-lime group-hover:translate-x-0.5 transition-transform" />
         </button>
       </div>
 
-      {/* 2. Hero Typography & CTAs */}
-      <div className="text-center max-w-4xl mx-auto space-y-6">
-        <h1 className="text-5xl sm:text-7xl font-black tracking-tight text-white leading-[1.06]">
-          Code{" "}
-          <span className="text-accent-pink inline-block transform -rotate-1 select-none font-black drop-shadow-[0_0_25px_rgba(250,127,170,0.35)]">
-            breaks,
+      {/* 2. Hero Headline & Real Mission */}
+      <div className="text-center max-w-5xl mx-auto space-y-6">
+        <h1 className="text-4xl sm:text-6xl lg:text-7xl font-black tracking-tight text-white leading-[1.08]">
+          Bridge your{" "}
+          <span className="text-accent-lime inline-block font-black drop-shadow-[0_0_30px_rgba(194,239,78,0.35)]">
+            AI coding tools
           </span>{" "}
-          fix it faster
+          directly to localhost
         </h1>
 
-        <p className="text-lg sm:text-xl text-on-dark-muted max-w-2xl mx-auto font-normal leading-relaxed">
-          Application bridge and local developer runtime considered{" "}
-          <span className="text-white font-medium">"essential"</span> by AI-assisted engineers.
-          Safe backups, git telemetry, dev server radar, and zero port sprawl.
+        <p className="text-base sm:text-xl text-on-dark-muted max-w-3xl mx-auto font-normal leading-relaxed">
+          Universal Dev MCP connects Claude Desktop, Cursor, Windsurf, and Zed to your running dev servers,
+          local code files, git branches, and APIs — with automatic safety backups before every edit.
         </p>
 
         <div className="flex flex-wrap items-center justify-center gap-4 pt-2">
@@ -90,116 +90,100 @@ export const Home: React.FC<HomeProps> = ({
             onClick={() => onNavigate("projects")}
             className="btn-cap bg-white hover:bg-slate-100 text-ink-deep font-bold px-7 py-3 rounded-md text-sm transition-all transform hover:scale-[1.02] shadow-[0_0_20px_rgba(255,255,255,0.15)] flex items-center space-x-2"
           >
-            <span>GET STARTED</span>
-            <ArrowRight className="w-4 h-4 text-ink-deep" />
+            <Cpu className="w-4 h-4 text-ink-deep" />
+            <span>CONNECT YOUR EDITORS</span>
           </button>
 
           <button
             onClick={() => onNavigate("activity")}
-            className="btn-cap bg-surface-card/80 hover:bg-surface-card text-white font-bold px-7 py-3 rounded-md text-sm border border-accent-pink/50 hover:border-accent-pink transition-all transform hover:scale-[1.02] shadow-[0_0_20px_rgba(250,127,170,0.1)] flex items-center space-x-2"
+            className="btn-cap bg-surface-card/80 hover:bg-surface-card text-white font-bold px-7 py-3 rounded-md text-sm border border-hairline-violet hover:border-accent-lime transition-all transform hover:scale-[1.02] shadow-md flex items-center space-x-2"
           >
-            <Activity className="w-4 h-4 text-accent-pink" />
-            <span>OPEN CONSOLE</span>
+            <Activity className="w-4 h-4 text-accent-lime" />
+            <span>VIEW LIVE TOOL STREAM</span>
           </button>
         </div>
       </div>
 
-      {/* 3. Hero Interactive Stage (Mascot & Dual-Sided Telemetry Cards) */}
-      <div className="relative max-w-6xl mx-auto">
+      {/* 3. Hero Visual Showcase (Real Tool Telemetry & Dev Runtime) */}
+      <div className="relative max-w-7xl mx-auto w-full">
         {/* Ambient atmospheric glows */}
-        <div className="absolute top-1/2 left-1/4 -translate-y-1/2 w-96 h-96 bg-accent-pink/15 rounded-full blur-[100px] pointer-events-none" />
-        <div className="absolute top-1/2 right-1/4 -translate-y-1/2 w-96 h-96 bg-accent-lime/15 rounded-full blur-[100px] pointer-events-none" />
+        <div className="absolute top-1/2 left-1/4 -translate-y-1/2 w-96 h-96 bg-accent-lime/10 rounded-full blur-[120px] pointer-events-none" />
+        <div className="absolute top-1/2 right-1/4 -translate-y-1/2 w-96 h-96 bg-accent-pink/10 rounded-full blur-[120px] pointer-events-none" />
 
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-center relative z-10">
-          {/* Left Cards: Errors & Interactive Replay Preview */}
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-center relative z-10 w-full">
+          {/* Left Cards: Real Tool Executions */}
           <div className="lg:col-span-4 space-y-4">
-            {/* Card 1: Errors & AI Telemetry */}
-            <div className="bg-[#19112a]/95 border border-[#312351] rounded-xl p-4 shadow-2xl backdrop-blur-md transform hover:-translate-y-0.5 transition-transform">
-              <div className="flex items-center justify-between pb-3 border-b border-hairline-violet text-xs font-mono">
+            {/* Card 1: Safe File Edit & Snapshot */}
+            <div className="bg-[#19112a]/95 border border-[#312351] rounded-xl p-4 shadow-2xl backdrop-blur-md">
+              <div className="flex items-center justify-between pb-2.5 border-b border-hairline-violet text-xs font-mono">
                 <div className="flex items-center space-x-2">
-                  <span className="w-2.5 h-2.5 rounded-full bg-accent-pink animate-ping" />
-                  <span className="font-bold text-white uppercase tracking-wider text-[11px]">Runtime Errors</span>
+                  <FileCode2 className="w-3.5 h-3.5 text-accent-lime" />
+                  <span className="font-bold text-white uppercase tracking-wider text-[11px]">Tool: edit_file</span>
                 </div>
-                <span className="text-on-dark-faint text-[10px] bg-surface-night px-2 py-0.5 rounded">PID 8310</span>
+                <span className="text-accent-lime text-[10px] font-mono bg-accent-lime/10 px-2 py-0.5 rounded">
+                  EXECUTED (14ms)
+                </span>
               </div>
 
               <div className="mt-3 bg-surface-night rounded-md p-3 font-mono text-[11px] leading-relaxed border border-hairline-violet/60">
-                <div className="flex items-center space-x-2 text-on-dark-faint text-[10px] pb-1.5 border-b border-hairline-violet/40">
-                  <span className="text-accent-pink font-bold">src/server.ts</span>
-                  <span>•</span>
-                  <span>Line 6559</span>
+                <div className="text-on-dark-faint text-[10px] pb-1.5 border-b border-hairline-violet/40">
+                  Cursor invoked file modification:
                 </div>
-                <div className="mt-2 text-on-dark-muted">
-                  <span className="text-on-dark-faint select-none mr-3">6559</span>
-                  <span className="text-accent-pink">return new</span> Error(
-                  <span className="text-accent-lime">`Connection refused on :3000`</span>);
+                <div className="mt-2 text-on-dark-muted space-y-1">
+                  <div><span className="text-on-dark-faint">path:</span> <span className="text-white">"src/components/Navbar.tsx"</span></div>
+                  <div><span className="text-accent-pink">- target:</span> <span className="text-accent-pink">"const isConnected = false;"</span></div>
+                  <div><span className="text-accent-lime">+ replacement:</span> <span className="text-accent-lime">"const isConnected = true;"</span></div>
                 </div>
               </div>
 
               <div className="mt-3 flex items-center justify-between text-[11px] font-mono text-on-dark-muted">
-                <div className="flex items-center space-x-2">
-                  <span className="px-2 py-0.5 rounded bg-on-dark-faint/30 text-white font-bold">Logs (12)</span>
-                  <span className="px-2 py-0.5 rounded bg-on-dark-faint/20 text-on-dark-muted">Traces (3)</span>
-                </div>
-                <span className="text-accent-lime text-[10px] font-bold">Captured in 4ms</span>
+                <span className="text-on-dark-faint text-[10px]">Auto-snapshot saved:</span>
+                <span className="text-accent-pink text-[10px] font-bold">.mcp-backups/Navbar.bak</span>
               </div>
             </div>
 
-            {/* Card 2: Replays & Dev Preview */}
+            {/* Card 2: Page Inspector view_page */}
             <div className="bg-[#19112a]/95 border border-[#312351] rounded-xl p-4 shadow-2xl backdrop-blur-md">
-              <div className="flex items-center justify-between pb-2 text-xs font-mono">
-                <span className="font-bold text-white text-[11px] uppercase tracking-wider">DOM Replay & Preview</span>
-                <span className="text-[10px] text-accent-lime font-mono">LIVE 60FPS</span>
+              <div className="flex items-center justify-between pb-2.5 border-b border-hairline-violet text-xs font-mono">
+                <div className="flex items-center space-x-2">
+                  <Globe className="w-3.5 h-3.5 text-accent-lime" />
+                  <span className="font-bold text-white uppercase tracking-wider text-[11px]">Tool: view_page</span>
+                </div>
+                <span className="text-white text-[10px] font-mono bg-surface-night px-2 py-0.5 rounded border border-hairline-violet">
+                  HTTP 200 OK
+                </span>
               </div>
 
-              <div className="mt-2 bg-surface-night rounded-lg border border-hairline-violet overflow-hidden">
-                <div className="bg-ink-deep px-3 py-1.5 flex items-center space-x-2 border-b border-hairline-violet text-[10px] font-mono text-on-dark-muted">
-                  <span className="w-2 h-2 rounded-full bg-accent-pink/80" />
-                  <span className="w-2 h-2 rounded-full bg-yellow-400/80" />
-                  <span className="w-2 h-2 rounded-full bg-accent-lime/80" />
-                  <span className="ml-2 text-white">http://localhost:3000</span>
+              <div className="mt-3 bg-surface-night rounded-lg border border-hairline-violet p-3 font-mono text-[11px] text-on-dark-muted space-y-1.5">
+                <div className="flex items-center justify-between text-[10px]">
+                  <span className="text-white">http://localhost:3000/</span>
+                  <span className="text-accent-lime font-bold">11ms latency</span>
                 </div>
-
-                <div className="p-3 text-[11px] font-mono text-on-dark-muted space-y-1.5">
-                  <div className="flex items-center justify-between text-[10px]">
-                    <span className="text-on-dark-faint">Rendered via view_page</span>
-                    <span className="text-accent-lime">200 OK (11ms)</span>
-                  </div>
-                  <div className="w-full bg-hairline-violet h-1.5 rounded-full overflow-hidden">
-                    <div className="bg-accent-lime h-full rounded-full" style={{ width: `${demoScrub}%` }} />
-                  </div>
-                  <div className="flex items-center justify-between pt-1">
-                    <button
-                      onClick={() => setDemoScrub((s) => (s >= 95 ? 10 : s + 15))}
-                      className="text-white hover:text-accent-lime flex items-center space-x-1 text-[10px]"
-                    >
-                      <Play className="w-3 h-3 fill-current" />
-                      <span>Scrub timeline</span>
-                    </button>
-                    <span className="text-on-dark-faint text-[10px]">00:04.12 / 00:10.00</span>
-                  </div>
-                </div>
+                <p className="text-on-dark-faint text-[10px] pt-1">
+                  Scraped DOM Title: <span className="text-white">"Local React App"</span>
+                </p>
+                <p className="text-[10px] text-on-dark-muted">
+                  Extracted metadata, visible headings & interactive links for LLM reasoning.
+                </p>
               </div>
             </div>
           </div>
 
-          {/* Center Column: Mascot Hero Illustration with Beams */}
+          {/* Center Column: Mascot Hero Illustration */}
           <div className="lg:col-span-4 flex flex-col items-center justify-center relative">
-            {/* Holographic scanner cone glows */}
             <div
-              className="absolute left-0 top-1/2 -translate-y-1/2 w-48 h-32 bg-gradient-to-l from-accent-pink/40 to-transparent blur-xl pointer-events-none transform -rotate-12"
+              className="absolute left-0 top-1/2 -translate-y-1/2 w-48 h-32 bg-gradient-to-l from-accent-pink/30 to-transparent blur-xl pointer-events-none transform -rotate-12"
               style={{ zIndex: 1 }}
             />
             <div
-              className="absolute right-0 top-1/2 -translate-y-1/2 w-48 h-32 bg-gradient-to-r from-accent-lime/40 to-transparent blur-xl pointer-events-none transform rotate-12"
+              className="absolute right-0 top-1/2 -translate-y-1/2 w-48 h-32 bg-gradient-to-r from-accent-lime/30 to-transparent blur-xl pointer-events-none transform rotate-12"
               style={{ zIndex: 1 }}
             />
 
-            {/* Mascot Image with soft radial edge blending */}
             <div className="relative w-72 sm:w-80 h-72 sm:h-80 rounded-2xl overflow-hidden flex items-center justify-center p-2 group">
               <img
                 src="/mascot.jpg"
-                alt="Universal Dev MCP Mascot Inspector"
+                alt="Universal Dev MCP Server"
                 className="w-full h-full object-cover rounded-xl shadow-2xl transition-transform duration-500 group-hover:scale-105"
                 style={{
                   maskImage: "radial-gradient(circle at 50% 50%, black 72%, transparent 98%)",
@@ -208,88 +192,86 @@ export const Home: React.FC<HomeProps> = ({
               />
             </div>
 
-            {/* Mascot Caption Badge */}
-            <div className="mt-2 inline-flex items-center space-x-2 bg-surface-night/90 border border-hairline-violet px-3 py-1 rounded-full text-[11px] font-mono text-on-dark-muted shadow-lg">
-              <span className="text-accent-lime font-bold">⚡ AI Telemetry Guardian</span>
+            {/* Clear, Accurate Caption */}
+            <div className="mt-3 inline-flex items-center space-x-2 bg-surface-night/95 border border-hairline-violet px-3.5 py-1.5 rounded-full text-xs font-mono text-on-dark-muted shadow-lg">
+              <span className="text-accent-lime font-bold">⚡ Universal Dev MCP Server</span>
               <span>•</span>
-              <span className="text-white">Active on localhost:3333</span>
+              <span className="text-white">Stdio & HTTP on Port 3333</span>
             </div>
           </div>
 
-          {/* Right Cards: Dev Radar & Root Cause Safety Checklist */}
+          {/* Right Cards: Dev Server Radar & Security Guardrails */}
           <div className="lg:col-span-4 space-y-4">
-            {/* Card 3: Dev Radar Diagnostic */}
-            <div className="bg-[#19112a]/95 border border-[#312351] rounded-xl p-4 shadow-2xl backdrop-blur-md transform hover:-translate-y-0.5 transition-transform">
-              <div className="flex items-center justify-between pb-3 border-b border-hairline-violet text-xs font-mono">
+            {/* Card 3: Real Localhost Port Scan */}
+            <div className="bg-[#19112a]/95 border border-[#312351] rounded-xl p-4 shadow-2xl backdrop-blur-md">
+              <div className="flex items-center justify-between pb-2.5 border-b border-hairline-violet text-xs font-mono">
                 <div className="flex items-center space-x-2">
                   <Radio className="w-3.5 h-3.5 text-accent-lime animate-pulse" />
-                  <span className="font-bold text-accent-lime uppercase tracking-wider text-[11px]">Dev Radar</span>
+                  <span className="font-bold text-accent-lime uppercase tracking-wider text-[11px]">Tool: scan_dev_servers</span>
                 </div>
                 <span className="text-accent-lime text-[10px] font-bold bg-accent-lime/10 px-2 py-0.5 rounded">
-                  SCAN COMPLETED
+                  3 ACTIVE PORTS
                 </span>
               </div>
 
-              <div className="mt-3 space-y-2 font-mono text-xs">
-                <div className="flex items-center justify-between text-on-dark-muted">
-                  <span className="text-white font-medium">Local Dev Servers</span>
-                  <span className="text-accent-lime font-bold">3 Detected</span>
+              <div className="mt-3 space-y-1.5 font-mono text-xs">
+                <div className="flex items-center justify-between bg-surface-night p-2 rounded border border-hairline-violet/60 text-[11px]">
+                  <div className="flex items-center space-x-2">
+                    <span className="w-2 h-2 rounded-full bg-accent-lime" />
+                    <span className="text-white font-bold">Port 3000</span>
+                    <span className="text-on-dark-faint text-[10px]">Next.js</span>
+                  </div>
+                  <span className="text-accent-lime font-bold">12ms</span>
                 </div>
 
-                <div className="space-y-1.5 pt-1">
-                  <div className="flex items-center justify-between bg-surface-night/90 p-2 rounded border border-hairline-violet/50 text-[11px]">
-                    <div className="flex items-center space-x-2">
-                      <span className="w-2 h-2 rounded-full bg-accent-lime" />
-                      <span className="text-white font-bold">Port 3000</span>
-                      <span className="text-on-dark-faint text-[10px]">Next.js</span>
-                    </div>
-                    <span className="text-accent-lime font-bold">12ms</span>
+                <div className="flex items-center justify-between bg-surface-night p-2 rounded border border-hairline-violet/60 text-[11px]">
+                  <div className="flex items-center space-x-2">
+                    <span className="w-2 h-2 rounded-full bg-accent-lime" />
+                    <span className="text-white font-bold">Port 5173</span>
+                    <span className="text-on-dark-faint text-[10px]">Vite App</span>
                   </div>
+                  <span className="text-accent-lime font-bold">6ms</span>
+                </div>
 
-                  <div className="flex items-center justify-between bg-surface-night/90 p-2 rounded border border-hairline-violet/50 text-[11px]">
-                    <div className="flex items-center space-x-2">
-                      <span className="w-2 h-2 rounded-full bg-accent-lime" />
-                      <span className="text-white font-bold">Port 5173</span>
-                      <span className="text-on-dark-faint text-[10px]">Vite UI</span>
-                    </div>
-                    <span className="text-accent-lime font-bold">6ms</span>
+                <div className="flex items-center justify-between bg-surface-night p-2 rounded border border-hairline-violet/60 text-[11px]">
+                  <div className="flex items-center space-x-2">
+                    <span className="w-2 h-2 rounded-full bg-accent-lime" />
+                    <span className="text-white font-bold">Port 3333</span>
+                    <span className="text-on-dark-faint text-[10px]">Universal MCP</span>
                   </div>
-
-                  <div className="flex items-center justify-between bg-surface-night/90 p-2 rounded border border-hairline-violet/50 text-[11px]">
-                    <div className="flex items-center space-x-2">
-                      <span className="w-2 h-2 rounded-full bg-accent-lime" />
-                      <span className="text-white font-bold">Port 3333</span>
-                      <span className="text-on-dark-faint text-[10px]">Universal MCP</span>
-                    </div>
-                    <span className="text-accent-lime font-bold">1ms</span>
-                  </div>
+                  <span className="text-accent-lime font-bold">1ms</span>
                 </div>
               </div>
             </div>
 
-            {/* Card 4: Safety & Root Cause Verification */}
+            {/* Card 4: Security & Rollback Safeguards */}
             <div className="bg-[#19112a]/95 border border-[#312351] rounded-xl p-4 shadow-2xl backdrop-blur-md">
-              <div className="flex items-center justify-between pb-2 text-xs font-mono">
-                <span className="font-bold text-white text-[11px] uppercase tracking-wider">Safety & Rollback Guard</span>
-                <span className="text-[10px] text-accent-lime font-bold">100% PROTECTED</span>
+              <div className="flex items-center justify-between pb-2 border-b border-hairline-violet text-xs font-mono">
+                <div className="flex items-center space-x-2">
+                  <ShieldCheck className="w-3.5 h-3.5 text-accent-lime" />
+                  <span className="font-bold text-white text-[11px] uppercase tracking-wider">Security & Guardrails</span>
+                </div>
+                <span className="text-[10px] text-accent-lime font-bold bg-accent-lime/10 px-2 py-0.5 rounded">
+                  ENFORCED
+                </span>
               </div>
 
-              <div className="mt-2 space-y-2 font-mono text-[11px]">
+              <div className="mt-2.5 space-y-2 font-mono text-[11px]">
                 <div className="flex items-start space-x-2 text-on-dark-muted">
                   <Check className="w-3.5 h-3.5 text-accent-lime mt-0.5 flex-shrink-0" />
-                  <span>Automatic backup snapshot before AI edits</span>
+                  <span>Directory traversal confinement to project root</span>
                 </div>
                 <div className="flex items-start space-x-2 text-on-dark-muted">
                   <Check className="w-3.5 h-3.5 text-accent-lime mt-0.5 flex-shrink-0" />
-                  <span>Git working tree clean (branch: main)</span>
+                  <span>Strict command allowlist (npm, git, npx)</span>
                 </div>
                 <div className="flex items-start space-x-2 text-on-dark-muted">
                   <Check className="w-3.5 h-3.5 text-accent-lime mt-0.5 flex-shrink-0" />
-                  <span>Command allowlist strictly enforced</span>
+                  <span>Automatic backup snapshot before every file write</span>
                 </div>
                 <div className="flex items-start space-x-2 text-on-dark-muted">
                   <Check className="w-3.5 h-3.5 text-accent-lime mt-0.5 flex-shrink-0" />
-                  <span>Real-time SSE event telemetry stream active</span>
+                  <span>Real-time SSE telemetry event bus on /sse</span>
                 </div>
               </div>
             </div>
@@ -297,45 +279,45 @@ export const Home: React.FC<HomeProps> = ({
         </div>
       </div>
 
-      {/* 4. Real-Time Platform Metrics Bar */}
-      <div className="max-w-6xl mx-auto bg-surface-card border border-hairline-violet rounded-xl p-6 shadow-xl grid grid-cols-2 md:grid-cols-4 gap-6 text-center">
+      {/* 4. Real Platform Metrics Bar */}
+      <div className="max-w-7xl mx-auto bg-surface-card border border-hairline-violet rounded-xl p-6 shadow-xl grid grid-cols-2 md:grid-cols-4 gap-6 text-center w-full">
         <div className="space-y-1">
           <div className="text-3xl font-black text-white">{toolsCount}</div>
-          <div className="text-xs font-mono text-accent-lime font-bold uppercase tracking-wider">AI Tools Active</div>
-          <div className="text-[11px] text-on-dark-muted">FS, Git, Web, CLI & Radar</div>
+          <div className="text-xs font-mono text-accent-lime font-bold uppercase tracking-wider">MCP Tools Active</div>
+          <div className="text-[11px] text-on-dark-muted">File I/O, Git, Web, CLI & Radar</div>
         </div>
 
         <div className="space-y-1">
           <div className="text-3xl font-black text-white">4</div>
-          <div className="text-xs font-mono text-accent-pink font-bold uppercase tracking-wider">Supported Editors</div>
-          <div className="text-[11px] text-on-dark-muted">Claude, Cursor, Windsurf, Zed</div>
+          <div className="text-xs font-mono text-white font-bold uppercase tracking-wider">Supported Editors</div>
+          <div className="text-[11px] text-on-dark-muted">Claude Desktop, Cursor, Windsurf, Zed</div>
         </div>
 
         <div className="space-y-1">
-          <div className="text-3xl font-black text-white">0s</div>
-          <div className="text-xs font-mono text-accent-lime font-bold uppercase tracking-wider">Rollback Delay</div>
-          <div className="text-[11px] text-on-dark-muted">Instant safe file reversion</div>
+          <div className="text-3xl font-black text-white">100%</div>
+          <div className="text-xs font-mono text-accent-lime font-bold uppercase tracking-wider">Rollback Safety</div>
+          <div className="text-[11px] text-on-dark-muted">Auto-snapshots in .mcp-backups/</div>
         </div>
 
         <div className="space-y-1">
           <div className="text-3xl font-black text-white">:3333</div>
           <div className="text-xs font-mono text-purple-400 font-bold uppercase tracking-wider">Single Port Process</div>
-          <div className="text-[11px] text-on-dark-muted">Zero port sprawl architecture</div>
+          <div className="text-[11px] text-on-dark-muted">MCP, SSE stream, and Web UI unified</div>
         </div>
       </div>
 
-      {/* 5. Feature Grid with Rich Visuals */}
-      <div className="max-w-6xl mx-auto space-y-8">
+      {/* 5. Real Feature Modules */}
+      <div className="max-w-7xl mx-auto space-y-8 w-full">
         <div className="text-center space-y-2">
           <h2 className="text-3xl sm:text-4xl font-black tracking-tight text-white">
-            Engineered for high-velocity local AI development
+            Built for AI-assisted local development
           </h2>
-          <p className="text-on-dark-muted font-normal max-w-xl mx-auto text-sm">
-            Everything your AI assistant needs to understand, test, and safely build your web applications.
+          <p className="text-on-dark-muted font-normal max-w-2xl mx-auto text-sm">
+            Everything your AI coding assistant needs to inspect your localhost, verify its own work, and operate safely.
           </p>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 w-full">
           {/* Feature 1: Dev Radar */}
           <div className="bg-surface-card border border-hairline-violet rounded-xl overflow-hidden hover:border-accent-lime/40 transition-colors flex flex-col justify-between group">
             <div className="p-6 space-y-3">
@@ -343,11 +325,11 @@ export const Home: React.FC<HomeProps> = ({
                 <Radio className="w-5 h-5" />
               </div>
               <h3 className="text-xl font-bold text-white group-hover:text-accent-lime transition-colors">
-                Dev Server Radar & Page Inspector
+                Dev Server Radar & DOM Page Inspector
               </h3>
               <p className="text-sm text-on-dark-muted leading-relaxed">
-                Parallel background scanning across ports 3000, 5173, 8080, and 4200. Let your AI agent view live
-                rendered HTML, analyze server headers, and inspect runtime response times.
+                Scan localhost ports (3000, 5173, 8080) in parallel to detect running dev servers (Vite, Next.js, Express).
+                The <code className="text-white">view_page</code> tool extracts page titles, meta tags, and visible DOM content so AI can verify its own UI changes.
               </p>
             </div>
 
@@ -360,9 +342,9 @@ export const Home: React.FC<HomeProps> = ({
                 />
                 <button
                   onClick={() => onNavigate("radar")}
-                  className="absolute bottom-3 right-3 btn-cap bg-surface-night/90 hover:bg-surface-night text-white text-xs font-mono px-3 py-1.5 rounded border border-hairline-violet flex items-center space-x-1.5 backdrop-blur-md"
+                  className="absolute bottom-3 right-3 btn-cap bg-surface-night/90 hover:bg-surface-night text-white text-xs font-mono px-3.5 py-1.5 rounded border border-hairline-violet flex items-center space-x-1.5 backdrop-blur-md"
                 >
-                  <span>Launch Radar</span>
+                  <span>Launch Dev Radar</span>
                   <ChevronRight className="w-3.5 h-3.5 text-accent-lime" />
                 </button>
               </div>
@@ -379,33 +361,33 @@ export const Home: React.FC<HomeProps> = ({
                 Automatic Safety Backups & Visual Diff
               </h3>
               <p className="text-sm text-on-dark-muted leading-relaxed">
-                Never fear an LLM hallucinating away your code. Every destructive write creates an automatic timestamped
-                snapshot in <code className="text-accent-pink">.mcp-backups/</code> with side-by-side visual diff comparison
-                and 1-click restore.
+                Never worry about an AI assistant corrupting or deleting your code. Every destructive write or edit creates
+                an automatic timestamped snapshot in <code className="text-accent-pink">.mcp-backups/</code> with side-by-side visual diff comparison
+                and 1-click instant rollback.
               </p>
             </div>
 
             <div className="mt-6 bg-surface-night rounded-lg border border-hairline-violet p-4 font-mono text-xs space-y-2">
               <div className="flex items-center justify-between text-on-dark-faint text-[10px]">
-                <span>SNAPSHOT BROWSER</span>
-                <span className="text-accent-pink">DIFF READY</span>
+                <span>AUTOMATIC SNAPSHOTS</span>
+                <span className="text-accent-lime">1-CLICK RESTORE</span>
               </div>
-              <div className="p-2.5 rounded bg-ink-deep border border-hairline-violet/50 flex items-center justify-between">
+              <div className="p-3 rounded bg-ink-deep border border-hairline-violet/50 flex items-center justify-between">
                 <div>
                   <div className="text-white font-bold">src/components/Navbar.tsx</div>
-                  <div className="text-[10px] text-on-dark-faint">2 minutes ago • 4,120 bytes</div>
+                  <div className="text-[10px] text-on-dark-faint">Saved before Claude edit • 4,120 bytes</div>
                 </div>
                 <button
                   onClick={() => onNavigate("backups")}
-                  className="btn-cap bg-accent-pink text-ink-deep font-bold px-2.5 py-1 rounded text-[11px] hover:bg-pink-300"
+                  className="btn-cap bg-accent-lime text-ink-deep font-bold px-3 py-1 rounded text-xs hover:bg-white"
                 >
-                  View Diff
+                  Inspect Diff
                 </button>
               </div>
             </div>
           </div>
 
-          {/* Feature 3: Live Activity Telemetry */}
+          {/* Feature 3: Live Telemetry Activity Stream */}
           <div className="bg-surface-card border border-hairline-violet rounded-xl p-6 hover:border-purple-400/40 transition-colors flex flex-col justify-between group">
             <div className="space-y-3">
               <div className="w-10 h-10 rounded-lg bg-surface-night border border-hairline-violet flex items-center justify-center text-purple-400">
@@ -415,7 +397,7 @@ export const Home: React.FC<HomeProps> = ({
                 Real-Time SSE Activity Stream
               </h3>
               <p className="text-sm text-on-dark-muted leading-relaxed">
-                Watch every single tool call, argument, execution latency, and error output live as Claude or Cursor
+                Watch every single tool execution, incoming arguments, execution duration, and output live as Claude or Cursor
                 interacts with your project. Built on high-performance Server-Sent Events.
               </p>
             </div>
@@ -438,11 +420,11 @@ export const Home: React.FC<HomeProps> = ({
                 <Terminal className="w-5 h-5" />
               </div>
               <h3 className="text-xl font-bold text-white group-hover:text-accent-lime transition-colors">
-                Interactive API & CLI Playground
+                Local API & CLI Command Workbench
               </h3>
               <p className="text-sm text-on-dark-muted leading-relaxed">
-                Send GET, POST, PUT, DELETE requests to your localhost backend without opening Postman. Execute
-                allowlisted git commands, run tests, and inspect build errors directly from the UI.
+                Test your localhost REST endpoints (GET, POST, PUT, DELETE) with custom headers and payloads directly.
+                Execute allowlisted git commands, run tests, and inspect outputs without switching windows.
               </p>
             </div>
 
@@ -460,12 +442,12 @@ export const Home: React.FC<HomeProps> = ({
       </div>
 
       {/* 6. One-Click Editor Setup Section */}
-      <div className="max-w-4xl mx-auto bg-surface-card border border-hairline-violet rounded-xl p-6 sm:p-8 space-y-6 shadow-2xl">
+      <div className="max-w-5xl mx-auto bg-surface-card border border-hairline-violet rounded-xl p-6 sm:p-8 space-y-6 shadow-2xl w-full">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div>
             <h3 className="text-2xl font-bold text-white">Connect Your Favorite AI Editor</h3>
             <p className="text-xs font-mono text-on-dark-muted mt-1">
-              Active Project: <span className="text-accent-lime">{activeProjectName}</span> ({activeProjectRoot})
+              Active Project: <span className="text-accent-lime font-bold">{activeProjectName}</span> ({activeProjectRoot})
             </p>
           </div>
 
@@ -475,7 +457,7 @@ export const Home: React.FC<HomeProps> = ({
               <button
                 key={ed}
                 onClick={() => setSelectedEditor(ed)}
-                className={`btn-cap px-3 py-1.5 rounded text-xs capitalize font-mono transition-colors ${
+                className={`btn-cap px-3.5 py-1.5 rounded text-xs capitalize font-mono transition-colors ${
                   selectedEditor === ed
                     ? "bg-accent-lime text-ink-deep font-bold"
                     : "text-on-dark-muted hover:text-white"
@@ -489,7 +471,7 @@ export const Home: React.FC<HomeProps> = ({
 
         {/* JSON Code Snippet */}
         <div className="relative">
-          <div className="flex items-center justify-between bg-ink-deep px-4 py-2 rounded-t-lg border-t border-x border-hairline-violet text-xs font-mono text-on-dark-muted">
+          <div className="flex items-center justify-between bg-ink-deep px-4 py-2.5 rounded-t-lg border-t border-x border-hairline-violet text-xs font-mono text-on-dark-muted">
             <span>
               {selectedEditor === "claude" && "claude_desktop_config.json"}
               {selectedEditor === "cursor" && "~/.cursor/mcp.json"}
@@ -517,12 +499,12 @@ export const Home: React.FC<HomeProps> = ({
         </div>
       </div>
 
-      {/* 7. Quick Launch Navigation Cards */}
-      <div className="max-w-6xl mx-auto">
+      {/* 7. Quick Navigation Cards */}
+      <div className="max-w-7xl mx-auto w-full">
         <h4 className="text-xs font-mono text-on-dark-faint uppercase tracking-wider mb-4">
           Explore Developer Modules
         </h4>
-        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3 w-full">
           {[
             { id: "projects", label: "Project Hub", desc: "Manage projects", icon: FolderGit2 },
             { id: "activity", label: "Live Activity", desc: "Watch tool calls", icon: Activity },
