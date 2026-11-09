@@ -59,20 +59,22 @@ export const Home: React.FC<HomeProps> = ({
   return (
     <div className="space-y-20 pb-16 w-full">
       {/* 1. Announcement Banner */}
-      <div className="flex justify-center pt-2">
+      <div className="flex justify-center pt-2 px-4">
         <button
           onClick={() => onNavigate("projects")}
-          className="group inline-flex items-center space-x-2 bg-surface-night/90 hover:bg-surface-night border border-hairline-violet hover:border-accent-lime/40 px-5 py-2 rounded-full text-xs font-mono text-on-dark-muted hover:text-white transition-all duration-200 shadow-lg hover:shadow-accent-lime/10"
+          className="group inline-flex items-center space-x-2 bg-surface-night/90 hover:bg-surface-night border border-hairline-violet hover:border-accent-lime/40 px-4 sm:px-5 py-2 rounded-full text-xs font-mono text-on-dark-muted hover:text-white transition-all duration-200 shadow-lg hover:shadow-accent-lime/10 max-w-full"
         >
-          <span className="w-2 h-2 rounded-full bg-accent-lime animate-pulse" />
-          <span>Model Context Protocol (MCP) Server for Claude Desktop, Cursor, Windsurf & Zed</span>
-          <ArrowRight className="w-3.5 h-3.5 text-accent-lime group-hover:translate-x-0.5 transition-transform" />
+          <span className="w-2 h-2 rounded-full bg-accent-lime animate-pulse shrink-0" />
+          <span className="truncate max-w-[70vw] sm:max-w-none">
+            Model Context Protocol (MCP) Server for Claude Desktop, Cursor, Windsurf & Zed
+          </span>
+          <ArrowRight className="w-3.5 h-3.5 text-accent-lime group-hover:translate-x-0.5 transition-transform shrink-0" />
         </button>
       </div>
 
       {/* 2. Hero Headline & Real Mission */}
-      <div className="text-center max-w-5xl mx-auto space-y-6">
-        <h1 className="text-4xl sm:text-6xl lg:text-7xl font-black tracking-tight text-white leading-[1.08]">
+      <div className="text-center max-w-5xl mx-auto space-y-6 px-4">
+        <h1 className="text-4xl sm:text-6xl lg:text-7xl font-black tracking-tight text-white leading-tight py-1">
           Bridge your{" "}
           <span className="text-accent-lime inline-block font-black drop-shadow-[0_0_30px_rgba(194,239,78,0.35)]">
             AI coding tools

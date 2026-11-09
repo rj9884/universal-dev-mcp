@@ -39,3 +39,12 @@
   letter-spacing: 0.2px;
   text-transform: uppercase;
 }
+
+/* Hide scrollbar for smooth horizontal nav */
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
