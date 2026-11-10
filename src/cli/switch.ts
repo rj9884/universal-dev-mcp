@@ -241,6 +241,42 @@ function applySwitchToWindsurf(project: Project): boolean {
   });
 }
 
+function applySwitchToZed(project: Project): boolean {
+  const configPath = getZedConfigPath();
+  if (!configPath) return false;
+
+  const serverEntry = {
+    id: "universal-dev-mcp",
+    command: "node",
+    args: [getMcpServerPath()],
+    env: {
+      PROJECT_ROOT: project.root,
+      ALLOWED_PORTS: project.allowed_ports,
+      ALLOWED_COMMANDS: project.allowed_commands,
+    },
+  };
+
+  return writeJsonConfig(configPath, (config) => {
+    if (!config.experimental || typeof config.experimental !== "object") {
+      config.experimental = {};
+    }
+    if (!config.experimental.model_context_protocol || typeof config.experimental.model_context_protocol !== "object") {
+      config.experimental.model_context_protocol = { servers: [] };
+    }
+    const servers: any[] = Array.isArray(config.experimental.model_context_protocol.servers)
+      ? config.experimental.model_context_protocol.servers
+      : [];
+    const idx = servers.findIndex((s) => s.id === "universal-dev-mcp");
+    if (idx >= 0) {
+      servers[idx] = serverEntry;
+    } else {
+      servers.push(serverEntry);
+    }
+    config.experimental.model_context_protocol.servers = servers;
+    return config;
+  });
+}
+
 function prompt(question: string): Promise<string> {
   const rl = readline.createInterface({ input: process.stdin, output: process.stdout });
   return new Promise((resolve) => {
@@ -249,6 +285,45 @@ function prompt(question: string): Promise<string> {
       resolve(answer.trim());
     });
   });
+}
+
+function cmdCurrent() {
+  const claudePath = getClaudeConfigPath();
+  let activeRoot = "";
+
+  if (claudePath && fs.existsSync(claudePath)) {
+    try {
+      const cfg = JSON.parse(fs.readFileSync(claudePath, "utf8"));
+      activeRoot = cfg?.mcpServers?.["universal-dev-mcp"]?.env?.PROJECT_ROOT || "";
+    } catch {
+      /* ignore */
+    }
+  }
+
+  log("");
+  info(bar());
+  info("  Current Active Project");
+  info(bar());
+  log("");
+
+  if (!activeRoot) {
+    warn("  No active project detected in Claude Desktop config.");
+    log("");
+    return;
+  }
+
+  const projects = loadProjects();
+  const project = projects.find((p) => path.resolve(p.root) === path.resolve(activeRoot));
+
+  if (project) {
+    success(`  * ${project.name} (active)`);
+    dim(`    Path: ${project.root}`);
+    dim(`    Allowed Ports: ${project.allowed_ports}`);
+    dim(`    Allowed Commands: ${project.allowed_commands}`);
+  } else {
+    log(`  Active path: ${activeRoot} (not configured in projects.json)`);
+  }
+  log("");
 }
 
 function cmdList() {
@@ -336,6 +411,16 @@ function cmdUse(name: string, targetEditor = "all") {
       updatedCount++;
     } else {
       dim("  - Windsurf mcp_config.json not found (skipped)");
+    }
+  }
+
+  if (targetEditor === "all" || targetEditor === "zed") {
+    const zedOk = applySwitchToZed(project);
+    if (zedOk) {
+      success("  ✓ Zed settings.json updated");
+      updatedCount++;
+    } else {
+      dim("  - Zed settings.json not found (skipped)");
     }
   }
 
@@ -434,9 +519,16 @@ program
 program
   .command("use <project-name>")
   .description("Switch to a project by name")
-  .option("-e, --editor <editor>", "Target editor (all, claude, cursor, windsurf)", "all")
+  .option("-e, --editor <editor>", "Target editor (all, claude, cursor, windsurf, zed)", "all")
   .action((name: string, options: { editor: string }) => {
     cmdUse(name, options.editor);
+  });
+
+program
+  .command("current")
+  .description("Show currently active project")
+  .action(() => {
+    cmdCurrent();
   });
 
 program
