@@ -1,6 +1,13 @@
 import React, { useState, useEffect } from "react";
-import { ShieldCheck, RotateCcw, Check } from "lucide-react";
-import { BackupItem, fetchBackups, fetchBackupDiff, restoreBackup } from "../api/client.js";
+import { ShieldCheck, RotateCcw, Check, Plus, Trash2, RefreshCw } from "lucide-react";
+import {
+  BackupItem,
+  fetchBackups,
+  fetchBackupDiff,
+  restoreBackup,
+  createManualBackup,
+  deleteBackup,
+} from "../api/client.js";
 
 export const BackupCenter: React.FC = () => {
   const [backups, setBackups] = useState<BackupItem[]>([]);
@@ -13,6 +20,9 @@ export const BackupCenter: React.FC = () => {
   } | null>(null);
   const [diffLoading, setDiffLoading] = useState<boolean>(false);
   const [restoreMessage, setRestoreMessage] = useState<string | null>(null);
+  const [createModalOpen, setCreateModalOpen] = useState<boolean>(false);
+  const [newBackupPath, setNewBackupPath] = useState<string>("");
+  const [creating, setCreating] = useState<boolean>(false);
 
   const loadBackups = async () => {
     try {
@@ -56,6 +66,40 @@ export const BackupCenter: React.FC = () => {
     }
   };
 
+  const handleDeleteBackup = async (b: BackupItem) => {
+    if (!confirm(`Permanently delete backup snapshot "${b.filename}"?`)) {
+      return;
+    }
+    await deleteBackup(b.filename);
+    if (selectedBackup?.filename === b.filename) {
+      setSelectedBackup(null);
+      setDiffData(null);
+    }
+    await loadBackups();
+  };
+
+  const handleCreateBackup = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newBackupPath.trim() || creating) return;
+    setCreating(true);
+    try {
+      const res = await createManualBackup(newBackupPath.trim());
+      if (res.success) {
+        setRestoreMessage(`Backup created: ${res.filename}`);
+        setTimeout(() => setRestoreMessage(null), 4000);
+        setCreateModalOpen(false);
+        setNewBackupPath("");
+        await loadBackups();
+      } else {
+        alert(`Backup error: ${res.error || "Failed to create backup"}`);
+      }
+    } catch (err: any) {
+      alert(`Error: ${err.message}`);
+    } finally {
+      setCreating(false);
+    }
+  };
+
   return (
     <div className="space-y-6">
       {/* Header */}
@@ -68,26 +112,41 @@ export const BackupCenter: React.FC = () => {
             </span>
           </div>
           <p className="text-on-dark-muted text-sm mt-1">
-            Every file modified or deleted by an AI tool creates an automatic backup in <code className="text-accent-lime">.mcp-backups/</code>.
+            Every file modified or deleted creates an automatic backup in <code className="text-accent-lime">.universal-dev-mcp/backups/</code>.
             Compare diffs and rollback with 1 click.
           </p>
         </div>
 
-        {restoreMessage && (
-          <div className="bg-accent-lime/20 border border-accent-lime text-accent-lime text-xs font-mono px-3 py-2 rounded-md flex items-center space-x-2">
-            <Check className="w-4 h-4 shrink-0" />
-            <span>{restoreMessage}</span>
-          </div>
-        )}
+        <div className="flex items-center space-x-3">
+          {restoreMessage && (
+            <div className="bg-accent-lime/20 border border-accent-lime text-accent-lime text-xs font-mono px-3 py-2 rounded-md flex items-center space-x-2">
+              <Check className="w-4 h-4 shrink-0" />
+              <span>{restoreMessage}</span>
+            </div>
+          )}
+          <button
+            onClick={() => setCreateModalOpen(true)}
+            className="btn-cap bg-white text-ink-deep hover:bg-slate-100 font-bold px-3.5 py-2 rounded-md text-xs transition flex items-center space-x-1.5 shadow"
+          >
+            <Plus className="w-4 h-4 text-ink-deep" />
+            <span>Create Manual Backup</span>
+          </button>
+        </div>
       </div>
 
       {backups.length === 0 ? (
-        <div className="bg-surface-night border border-hairline-violet rounded-xl p-12 text-center text-on-dark-muted font-mono text-xs">
-          <ShieldCheck className="w-8 h-8 text-on-dark-muted mx-auto mb-3 opacity-50" />
-          <p>No backups found in .mcp-backups.</p>
-          <p className="text-[11px] mt-1 text-on-dark-muted/70">
-            Backups are created automatically whenever Claude, Cursor, or edit_file/patch_file alters a file.
+        <div className="bg-surface-night border border-hairline-violet rounded-xl p-12 text-center text-on-dark-muted font-mono text-xs space-y-3">
+          <ShieldCheck className="w-10 h-10 text-on-dark-muted mx-auto opacity-50" />
+          <p className="text-white font-bold text-sm">No backups found in .universal-dev-mcp/backups.</p>
+          <p className="text-[11px] text-on-dark-muted/70 max-w-md mx-auto">
+            Backups are created automatically whenever files are written or deleted, or you can create one manually using the button above.
           </p>
+          <button
+            onClick={() => setCreateModalOpen(true)}
+            className="btn-cap bg-accent-lime text-ink-deep font-bold px-4 py-2 rounded-md text-xs mt-2"
+          >
+            Create First Backup
+          </button>
         </div>
       ) : (
         <div className="grid grid-cols-1 xl:grid-cols-12 gap-6 w-full items-stretch">
@@ -100,9 +159,10 @@ export const BackupCenter: React.FC = () => {
                 </span>
                 <button
                   onClick={loadBackups}
-                  className="text-accent-lime hover:underline text-xs font-mono"
+                  className="text-accent-lime hover:underline text-xs font-mono flex items-center space-x-1"
                 >
-                  Refresh
+                  <RefreshCw className="w-3 h-3" />
+                  <span>Refresh</span>
                 </button>
               </div>
 
@@ -125,9 +185,21 @@ export const BackupCenter: React.FC = () => {
                         <span className="font-mono text-xs font-bold text-white truncate" title={b.originalRel}>
                           {b.originalRel}
                         </span>
-                        <span className="text-[10px] font-mono text-on-dark-faint bg-surface-night px-1.5 py-0.5 rounded border border-hairline-violet">
-                          {(b.sizeBytes / 1024).toFixed(1)} KB
-                        </span>
+                        <div className="flex items-center space-x-1.5">
+                          <span className="text-[10px] font-mono text-on-dark-faint bg-surface-night px-1.5 py-0.5 rounded border border-hairline-violet">
+                            {(b.sizeBytes / 1024).toFixed(1)} KB
+                          </span>
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleDeleteBackup(b);
+                            }}
+                            className="p-1 text-on-dark-muted hover:text-accent-pink transition"
+                            title="Delete backup"
+                          >
+                            <Trash2 className="w-3 h-3" />
+                          </button>
+                        </div>
                       </div>
                       <div className="flex items-center justify-between mt-2.5 text-[11px] font-mono text-on-dark-muted">
                         <span className="text-[10px]">{dateStr}</span>
@@ -137,7 +209,7 @@ export const BackupCenter: React.FC = () => {
                             handleRestore(b);
                           }}
                           title="Restore this version"
-                          className="btn-cap bg-surface-night hover:bg-white hover:text-ink-deep border border-hairline-violet text-accent-lime px-2.5 py-1 rounded text-[11px] flex items-center space-x-1"
+                          className="btn-cap bg-surface-night hover:bg-white hover:text-ink-deep border border-hairline-violet text-accent-lime px-2.5 py-1 rounded text-[11px] flex items-center space-x-1 font-bold"
                         >
                           <RotateCcw className="w-3 h-3" />
                           <span>Restore</span>
@@ -150,7 +222,7 @@ export const BackupCenter: React.FC = () => {
             </div>
 
             <div className="pt-3 mt-3 border-t border-hairline-violet text-[11px] font-mono text-on-dark-faint">
-              <span>Automatic rollback snapshots in <code className="text-white">.mcp-backups/</code></span>
+              <span>Automatic rollback snapshots in <code className="text-white">.universal-dev-mcp/backups/</code></span>
             </div>
           </div>
 
@@ -226,6 +298,65 @@ export const BackupCenter: React.FC = () => {
               <span className="text-accent-lime">1-Click atomic restore</span>
             </div>
           </div>
+        </div>
+      )}
+
+      {/* Create Manual Backup Modal */}
+      {createModalOpen && (
+        <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
+          <form
+            onSubmit={handleCreateBackup}
+            className="bg-surface-night border border-hairline-violet rounded-xl max-w-md w-full p-6 shadow-2xl space-y-4"
+          >
+            <div className="flex items-center justify-between border-b border-hairline-violet pb-3">
+              <h3 className="text-lg font-bold text-white flex items-center space-x-2">
+                <ShieldCheck className="w-5 h-5 text-accent-lime" />
+                <span>Create Manual File Backup</span>
+              </h3>
+              <button
+                type="button"
+                onClick={() => setCreateModalOpen(false)}
+                className="text-on-dark-muted hover:text-white text-sm"
+              >
+                ✕
+              </button>
+            </div>
+
+            <div className="space-y-3 text-xs">
+              <p className="text-on-dark-muted">
+                Create an instant snapshot of any file in the active project into <code className="text-accent-lime">.universal-dev-mcp/backups/</code>.
+              </p>
+
+              <div>
+                <label className="block text-white font-bold mb-1">File Relative Path</label>
+                <input
+                  type="text"
+                  required
+                  value={newBackupPath}
+                  onChange={(e) => setNewBackupPath(e.target.value)}
+                  placeholder="e.g. package.json or src/config.ts"
+                  className="w-full bg-ink-deep border border-hairline-cool/40 rounded-md px-3 py-2 text-white font-mono focus:outline-none focus:ring-1 focus:ring-accent-lime"
+                />
+              </div>
+            </div>
+
+            <div className="flex items-center justify-end space-x-3 pt-3 border-t border-hairline-violet">
+              <button
+                type="button"
+                onClick={() => setCreateModalOpen(false)}
+                className="btn-cap px-4 py-2 text-on-dark-muted hover:text-white text-xs"
+              >
+                Cancel
+              </button>
+              <button
+                type="submit"
+                disabled={creating}
+                className="btn-cap bg-accent-lime text-ink-deep hover:bg-opacity-90 px-4 py-2 rounded-md font-bold text-xs shadow disabled:opacity-50"
+              >
+                {creating ? "Creating..." : "Save Backup"}
+              </button>
+            </div>
+          </form>
         </div>
       )}
     </div>

@@ -1,5 +1,16 @@
 import React from "react";
-import { FolderGit2, Activity, ShieldCheck, Radio, Terminal, Sparkles, SlidersHorizontal } from "lucide-react";
+import {
+  FolderGit2,
+  Activity,
+  ShieldCheck,
+  Radio,
+  Terminal,
+  Sparkles,
+  SlidersHorizontal,
+  Cpu,
+  FileCode,
+  Layers,
+} from "lucide-react";
 
 interface NavbarProps {
   activeTab: string;
@@ -16,11 +27,14 @@ export const Navbar: React.FC<NavbarProps> = ({
 }) => {
   const tabs = [
     { id: "home", label: "Overview", icon: Sparkles },
-    { id: "projects", label: "Projects", icon: FolderGit2 },
-    { id: "activity", label: "Activity", fullLabel: "Live Activity", icon: Activity, badge: activityCount > 0 ? activityCount : undefined },
+    { id: "features", label: "Features", fullLabel: "Features & Tools (17)", icon: Layers },
+    { id: "projects", label: "Projects", fullLabel: "Projects & Sync", icon: FolderGit2 },
+    { id: "console", label: "Console", fullLabel: "Terminal Runner", icon: Terminal },
+    { id: "explorer", label: "Explorer", fullLabel: "Files & Search", icon: FileCode },
     { id: "backups", label: "Backups", fullLabel: "Backups & Diffs", icon: ShieldCheck },
     { id: "radar", label: "Radar", fullLabel: "Dev Radar", icon: Radio },
-    { id: "playground", label: "Playground", fullLabel: "Playground & CLI", icon: Terminal },
+    { id: "playground", label: "API Tester", fullLabel: "API Tester", icon: Cpu },
+    { id: "activity", label: "Activity", fullLabel: "Live Stream", icon: Activity, badge: activityCount > 0 ? activityCount : undefined },
   ];
 
   return (

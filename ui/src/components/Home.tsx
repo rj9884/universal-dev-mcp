@@ -298,7 +298,7 @@ export const Home: React.FC<HomeProps> = ({
         <div className="space-y-1">
           <div className="text-3xl font-black text-white">100%</div>
           <div className="text-xs font-mono text-accent-lime font-bold uppercase tracking-wider">Rollback Safety</div>
-          <div className="text-[11px] text-on-dark-muted">Auto-snapshots in .mcp-backups/</div>
+          <div className="text-[11px] text-on-dark-muted">Auto-snapshots in .universal-dev-mcp/backups/</div>
         </div>
 
         <div className="space-y-1">
@@ -317,6 +317,15 @@ export const Home: React.FC<HomeProps> = ({
           <p className="text-on-dark-muted font-normal max-w-2xl mx-auto text-sm">
             Everything your AI coding assistant needs to inspect your localhost, verify its own work, and operate safely.
           </p>
+          <div className="pt-2">
+            <button
+              onClick={() => onNavigate("features")}
+              className="btn-cap bg-surface-night hover:bg-white hover:text-ink-deep border border-hairline-violet text-accent-lime text-xs font-mono px-4 py-2 rounded-md transition inline-flex items-center space-x-1.5 shadow"
+            >
+              <span>Explore All 17 Features & Tools</span>
+              <ArrowRight className="w-3.5 h-3.5" />
+            </button>
+          </div>
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6 w-full">
@@ -364,7 +373,7 @@ export const Home: React.FC<HomeProps> = ({
               </h3>
               <p className="text-sm text-on-dark-muted leading-relaxed">
                 Never worry about an AI assistant corrupting or deleting your code. Every destructive write or edit creates
-                an automatic timestamped snapshot in <code className="text-accent-pink">.mcp-backups/</code> with side-by-side visual diff comparison
+                an automatic timestamped snapshot in <code className="text-accent-pink">.universal-dev-mcp/backups/</code> with side-by-side visual diff comparison
                 and 1-click instant rollback.
               </p>
             </div>

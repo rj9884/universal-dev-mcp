@@ -1,23 +1,56 @@
 import React, { useState, useEffect } from "react";
-import { FolderGit2, Check, Copy, Plus, RefreshCw, Cpu, ArrowRight, GitBranch, Terminal, Shield } from "lucide-react";
+import {
+  FolderGit2,
+  Check,
+  Copy,
+  Plus,
+  RefreshCw,
+  Cpu,
+  ArrowRight,
+  GitBranch,
+  Terminal,
+  Trash2,
+  Edit2,
+  Code2,
+  Sparkles,
+  CheckCircle2,
+} from "lucide-react";
 import {
   ProjectItem,
+  EditorStatusItem,
   fetchProjects,
   switchProject,
   addProject,
+  updateProject,
+  deleteProject,
   fetchEditorConfigs,
-  callMcpTool,
+  fetchEditorStatuses,
+  syncEditors,
+  fetchGitStatus,
+  fetchGitDiff,
 } from "../api/client.js";
 
 export const ProjectHub: React.FC = () => {
   const [projects, setProjects] = useState<ProjectItem[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
+  const [editors, setEditors] = useState<EditorStatusItem[]>([]);
+  const [syncingEditor, setSyncingEditor] = useState<boolean>(false);
+  const [syncMessage, setSyncMessage] = useState<string | null>(null);
+
+  // Git state
+  const [gitView, setGitView] = useState<"status" | "diff">("status");
   const [gitStatus, setGitStatus] = useState<string>("");
+  const [gitDiff, setGitDiff] = useState<string>("");
   const [gitLoading, setGitLoading] = useState<boolean>(false);
+  const [diffStaged, setDiffStaged] = useState<boolean>(false);
+
+  // Modals state
   const [editorModalOpen, setEditorModalOpen] = useState<boolean>(false);
   const [addModalOpen, setAddModalOpen] = useState<boolean>(false);
+  const [editModalOpen, setEditModalOpen] = useState<boolean>(false);
   const [editorConfigs, setEditorConfigs] = useState<Record<string, unknown>>({});
   const [selectedEditor, setSelectedEditor] = useState<string>("claude");
+  const [targetSyncEditor, setTargetSyncEditor] = useState<string>("all");
   const [copied, setCopied] = useState<boolean>(false);
   const [copiedPath, setCopiedPath] = useState<string | null>(null);
 
@@ -27,13 +60,20 @@ export const ProjectHub: React.FC = () => {
   const [newPorts, setNewPorts] = useState("3000,5173,8080");
   const [newCommands, setNewCommands] = useState("npm run build,npx tsc --noEmit,npm test");
 
-  const loadGitStatus = async () => {
+  // Edit Project Form state
+  const [editOriginalName, setEditOriginalName] = useState("");
+  const [editName, setEditName] = useState("");
+  const [editRoot, setEditRoot] = useState("");
+  const [editPorts, setEditPorts] = useState("");
+  const [editCommands, setEditCommands] = useState("");
+
+  const loadGitInfo = async () => {
     setGitLoading(true);
     try {
-      const gitRes = await callMcpTool("get_git_status", {});
-      if (!gitRes.isError) {
-        setGitStatus(gitRes.result);
-      }
+      const statusRes = await fetchGitStatus();
+      setGitStatus(statusRes.output || "Clean working tree (no modifications).");
+      const diffRes = await fetchGitDiff(undefined, diffStaged);
+      setGitDiff(diffRes.diff || "(No git diff changes detected)");
     } catch {
       /* ignore */
     } finally {
@@ -44,9 +84,13 @@ export const ProjectHub: React.FC = () => {
   const loadData = async () => {
     setLoading(true);
     try {
-      const data = await fetchProjects();
-      setProjects(data.projects || []);
-      await loadGitStatus();
+      const [projData, editorsData] = await Promise.all([
+        fetchProjects(),
+        fetchEditorStatuses().catch(() => ({ editors: [], currentRoot: "" })),
+      ]);
+      setProjects(projData.projects || []);
+      setEditors(editorsData.editors || []);
+      await loadGitInfo();
     } catch {
       /* ignore */
     } finally {
@@ -57,11 +101,37 @@ export const ProjectHub: React.FC = () => {
   useEffect(() => {
     loadData();
     fetchEditorConfigs().then(setEditorConfigs).catch(() => {});
-  }, []);
+  }, [diffStaged]);
 
-  const handleSwitch = async (nameOrPath: string) => {
-    await switchProject(nameOrPath);
+  const handleSwitch = async (nameOrPath: string, shouldSyncEditors = true) => {
+    const res = await switchProject(nameOrPath, {
+      syncEditors: shouldSyncEditors,
+      targetEditor: "all",
+    });
+    if (res?.editorSync && res.editorSync.updated?.length > 0) {
+      setSyncMessage(`Switched active context and synced to: ${res.editorSync.updated.join(", ")}`);
+      setTimeout(() => setSyncMessage(null), 4000);
+    }
     await loadData();
+  };
+
+  const handleSyncEditors = async (editor = targetSyncEditor) => {
+    setSyncingEditor(true);
+    try {
+      const activeProj = projects.find((p) => p.isActive);
+      const res = await syncEditors(activeProj?.name, editor);
+      if (res.updated.length > 0) {
+        setSyncMessage(`Successfully updated configuration for: ${res.updated.join(", ")}`);
+      } else if (res.skipped.length > 0) {
+        setSyncMessage(`Editor not found on disk, skipped: ${res.skipped.join(", ")}`);
+      }
+      setTimeout(() => setSyncMessage(null), 4000);
+      await loadData();
+    } catch (err: any) {
+      alert(`Sync error: ${err.message}`);
+    } finally {
+      setSyncingEditor(false);
+    }
   };
 
   const handleAddProject = async (e: React.FormEvent) => {
@@ -77,6 +147,35 @@ export const ProjectHub: React.FC = () => {
     setNewName("");
     setNewRoot("");
     await loadData();
+  };
+
+  const openEditModal = (proj: ProjectItem) => {
+    setEditOriginalName(proj.name);
+    setEditName(proj.name);
+    setEditRoot(proj.root);
+    setEditPorts(proj.allowed_ports);
+    setEditCommands(proj.allowed_commands);
+    setEditModalOpen(true);
+  };
+
+  const handleUpdateProject = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editName || !editRoot) return;
+    await updateProject(editOriginalName, {
+      name: editName,
+      root: editRoot,
+      allowed_ports: editPorts,
+      allowed_commands: editCommands,
+    });
+    setEditModalOpen(false);
+    await loadData();
+  };
+
+  const handleDeleteProject = async (name: string) => {
+    if (window.confirm(`Are you sure you want to remove project "${name}" from projects.json?`)) {
+      await deleteProject(name);
+      await loadData();
+    }
   };
 
   const handleCopyConfig = (content: string) => {
@@ -134,144 +233,294 @@ export const ProjectHub: React.FC = () => {
         </div>
       </div>
 
+      {/* Editor Sync Notification */}
+      {syncMessage && (
+        <div className="bg-surface-night border border-accent-lime/70 rounded-xl p-4 flex items-center justify-between text-xs font-mono text-white shadow-lg animate-fade-in">
+          <div className="flex items-center space-x-2.5">
+            <CheckCircle2 className="w-4 h-4 text-accent-lime shrink-0" />
+            <span>{syncMessage}</span>
+          </div>
+          <span className="text-[11px] text-accent-lime uppercase font-bold">Synced</span>
+        </div>
+      )}
+
+      {/* AI Editor Synchronization Status Bar */}
+      <div className="bg-surface-night border border-hairline-violet rounded-xl p-5 space-y-4">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-hairline-violet pb-3">
+          <div>
+            <h3 className="text-sm font-bold text-white flex items-center space-x-2">
+              <Cpu className="w-4 h-4 text-accent-lime" />
+              <span>AI Editor Workspace Synchronization</span>
+            </h3>
+            <p className="text-xs text-on-dark-muted mt-0.5">
+              Sync active PROJECT_ROOT to editor configuration files without running <code className="text-white">npx mcp-switch use</code> in terminal.
+            </p>
+          </div>
+
+          {/* Quick sync controls */}
+          <div className="flex items-center space-x-2">
+            <select
+              value={targetSyncEditor}
+              onChange={(e) => setTargetSyncEditor(e.target.value)}
+              className="bg-ink-deep border border-hairline-violet rounded-md px-3 py-1.5 text-xs text-white font-mono focus:outline-none focus:border-accent-lime"
+            >
+              <option value="all">All Detected Editors</option>
+              <option value="claude">Claude Desktop</option>
+              <option value="cursor">Cursor</option>
+              <option value="windsurf">Windsurf</option>
+              <option value="zed">Zed</option>
+            </select>
+            <button
+              onClick={() => handleSyncEditors()}
+              disabled={syncingEditor}
+              className="btn-cap bg-accent-lime text-ink-deep hover:bg-opacity-90 font-bold px-3.5 py-1.5 rounded-md text-xs transition flex items-center space-x-1.5 shadow disabled:opacity-50"
+            >
+              <Sparkles className="w-3.5 h-3.5 text-ink-deep" />
+              <span>{syncingEditor ? "Syncing..." : "Sync to Editors"}</span>
+            </button>
+          </div>
+        </div>
+
+        {/* Editor Badges Grid */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+          {editors.map((ed) => {
+            const isConfigured = ed.configured;
+            const exists = ed.exists;
+            return (
+              <div
+                key={ed.id}
+                className="bg-ink-deep border border-hairline-violet/70 rounded-lg p-3 space-y-2"
+              >
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-bold text-white">{ed.name}</span>
+                  <span
+                    className={`text-[10px] font-mono px-2 py-0.5 rounded-[3px] font-bold uppercase ${
+                      isConfigured
+                        ? "bg-accent-lime/20 text-accent-lime border border-accent-lime/40"
+                        : exists
+                        ? "bg-yellow-400/20 text-yellow-300 border border-yellow-400/40"
+                        : "bg-surface-night text-on-dark-muted border border-hairline-violet"
+                    }`}
+                  >
+                    {isConfigured ? "Configured" : exists ? "Detected" : "Not Found"}
+                  </span>
+                </div>
+                <div className="text-[10px] font-mono text-on-dark-muted truncate" title={ed.configPath || ""}>
+                  {ed.configPath ? ed.configPath.replace(process.env.HOME || "", "~") : "Path unavailable"}
+                </div>
+                <div className="pt-1 flex items-center justify-between">
+                  <span className="text-[10px] font-mono text-on-dark-faint">
+                    Root: {ed.configuredRoot ? ed.configuredRoot.split("/").pop() : "None"}
+                  </span>
+                  <button
+                    onClick={() => handleSyncEditors(ed.id)}
+                    disabled={syncingEditor}
+                    className="text-[10px] font-mono text-accent-lime hover:underline font-bold"
+                  >
+                    Apply Now
+                  </button>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+
       {/* Active Project & Git Telemetry Stage */}
       {activeProject && (
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 w-full items-stretch">
           {/* Left Panel: Active Project Configuration */}
-          <div className="lg:col-span-5 bg-surface-night border border-hairline-violet rounded-xl p-6 shadow-xl flex flex-col justify-between relative overflow-hidden">
+          <div className="lg:col-span-5 bg-surface-night border border-hairline-violet rounded-xl p-6 flex flex-col justify-between space-y-6">
             <div className="space-y-4">
-              <div className="flex items-center justify-between">
-                <span className="bg-accent-lime/20 border border-accent-lime/30 text-accent-lime text-xs font-bold px-2.5 py-1 rounded-[4px] uppercase tracking-[0.2px] flex items-center space-x-1.5">
-                  <span className="w-2 h-2 rounded-full bg-accent-lime animate-pulse" />
-                  <span>Current Active Context</span>
-                </span>
-                <span className="text-[11px] font-mono text-on-dark-faint bg-ink-deep px-2 py-0.5 rounded border border-hairline-violet">
-                  Port 3333 Active
-                </span>
-              </div>
+              <div className="flex items-center justify-between border-b border-hairline-violet pb-4">
+                <div>
+                  <span className="text-[10px] font-mono uppercase tracking-wider text-accent-lime font-bold">
+                    Active Context Root
+                  </span>
+                  <h2 className="text-xl font-bold text-white tracking-tight flex items-center space-x-2 mt-0.5">
+                    <span>{activeProject.name}</span>
+                    <span className="w-2 h-2 rounded-full bg-accent-lime shadow-[0_0_8px_rgba(194,239,78,0.8)]" />
+                  </h2>
+                </div>
 
-              <div>
-                <h2 className="text-3xl font-extrabold text-white tracking-tight">
-                  {activeProject.name}
-                </h2>
-                <div className="mt-2 flex items-center space-x-2 bg-ink-deep/80 border border-hairline-violet rounded-lg p-2.5 font-mono text-xs text-on-dark-muted">
-                  <span className="truncate flex-1 text-white">{activeProject.root}</span>
+                <div className="flex items-center space-x-2">
+                  <button
+                    onClick={() => openEditModal(activeProject)}
+                    className="p-1.5 rounded-md bg-ink-deep border border-hairline-violet text-on-dark-muted hover:text-white transition"
+                    title="Edit project configuration"
+                  >
+                    <Edit2 className="w-3.5 h-3.5" />
+                  </button>
                   <button
                     onClick={() => handleCopyPath(activeProject.root)}
-                    title="Copy Root Path"
-                    className="p-1 text-on-dark-faint hover:text-accent-lime transition"
+                    className="btn-cap bg-ink-deep border border-hairline-violet hover:border-accent-lime/60 text-white px-2.5 py-1 rounded text-xs transition flex items-center space-x-1 font-mono"
                   >
                     {copiedPath === activeProject.root ? (
                       <Check className="w-3.5 h-3.5 text-accent-lime" />
                     ) : (
                       <Copy className="w-3.5 h-3.5" />
                     )}
+                    <span>{copiedPath === activeProject.root ? "Copied" : "Copy Path"}</span>
                   </button>
                 </div>
               </div>
 
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
-                <div className="bg-ink-deep border border-hairline-violet/70 rounded-lg p-3">
-                  <span className="text-on-dark-faint block text-[10px] uppercase font-mono tracking-wider mb-1.5">
-                    Allowed Local Ports
-                  </span>
-                  <div className="flex flex-wrap gap-1">
-                    {activeProject.allowed_ports.split(",").map((port) => (
-                      <span
-                        key={port}
-                        className="bg-accent-lime/15 text-accent-lime border border-accent-lime/30 text-[11px] font-mono px-2 py-0.5 rounded"
-                      >
-                        :{port.trim()}
-                      </span>
-                    ))}
-                  </div>
-                </div>
-
-                <div className="bg-ink-deep border border-hairline-violet/70 rounded-lg p-3">
-                  <span className="text-on-dark-faint block text-[10px] uppercase font-mono tracking-wider mb-1.5 flex items-center space-x-1">
-                    <Shield className="w-3 h-3 text-accent-pink" />
-                    <span>Safety Backups</span>
-                  </span>
-                  <span className="text-white text-xs font-mono font-medium block">
-                    Armed before edits
-                  </span>
-                  <span className="text-[10px] text-on-dark-faint font-mono">
-                    Snapshot to .mcp-backups/
-                  </span>
+              {/* Absolute Path Box */}
+              <div>
+                <label className="text-[10px] uppercase font-bold text-on-dark-faint block mb-1">
+                  Filesystem Location
+                </label>
+                <div className="bg-ink-deep border border-hairline-violet rounded-md px-3 py-2 font-mono text-xs text-on-dark-light break-all select-text">
+                  {activeProject.root}
                 </div>
               </div>
 
-              <div className="bg-ink-deep border border-hairline-violet/70 rounded-lg p-3">
-                <span className="text-on-dark-faint block text-[10px] uppercase font-mono tracking-wider mb-1.5 flex items-center space-x-1">
-                  <Terminal className="w-3 h-3 text-on-dark-faint" />
-                  <span>Permitted Shell Commands</span>
-                </span>
-                <p className="text-xs font-mono text-on-dark-muted line-clamp-2 leading-relaxed">
-                  {activeProject.allowed_commands}
-                </p>
+              {/* Ports Allowed */}
+              <div>
+                <label className="text-[10px] uppercase font-bold text-on-dark-faint block mb-1">
+                  Allowlisted Port Scanner Range
+                </label>
+                <div className="flex flex-wrap gap-1.5">
+                  {activeProject.allowed_ports.split(",").map((p) => (
+                    <span
+                      key={p}
+                      className="bg-ink-deep text-accent-lime border border-hairline-violet text-xs font-mono px-2 py-0.5 rounded font-bold"
+                    >
+                      :{p.trim()}
+                    </span>
+                  ))}
+                </div>
+              </div>
+
+              {/* Commands Allowed */}
+              <div>
+                <label className="text-[10px] uppercase font-bold text-on-dark-faint block mb-1">
+                  Allowlisted Terminal Commands
+                </label>
+                <div className="bg-ink-deep border border-hairline-violet rounded-md p-2.5 space-y-1 font-mono text-xs max-h-36 overflow-y-auto">
+                  {activeProject.allowed_commands.split(",").map((cmd, i) => (
+                    <div key={i} className="flex items-center space-x-1.5 text-on-dark-light truncate">
+                      <Terminal className="w-3 h-3 text-accent-lime shrink-0" />
+                      <span className="truncate">{cmd.trim()}</span>
+                    </div>
+                  ))}
+                </div>
               </div>
             </div>
 
-            <div className="pt-4 mt-4 border-t border-hairline-violet flex items-center justify-between text-xs font-mono text-on-dark-faint">
-              <span>Switch anytime:</span>
-              <code className="text-accent-lime bg-ink-deep px-2 py-0.5 rounded border border-hairline-violet">
-                npx mcp-switch use {activeProject.name}
-              </code>
+            <div className="pt-4 border-t border-hairline-violet flex items-center justify-between text-xs font-mono text-on-dark-muted">
+              <span>Security Enforced</span>
+              <span className="text-accent-lime">Traversal Sandbox Active</span>
             </div>
           </div>
 
-          {/* Right Panel: Full Git Status & Repository Inspector */}
-          <div className="lg:col-span-7 bg-surface-night border border-hairline-violet rounded-xl p-6 shadow-xl flex flex-col justify-between">
+          {/* Right Panel: Live Git Status & Visual Git Diff Viewer */}
+          <div className="lg:col-span-7 bg-surface-night border border-hairline-violet rounded-xl p-6 flex flex-col justify-between">
             <div>
-              <div className="flex items-center justify-between pb-3 border-b border-hairline-violet">
+              <div className="flex items-center justify-between border-b border-hairline-violet pb-3">
                 <div className="flex items-center space-x-2">
                   <GitBranch className="w-4 h-4 text-accent-lime" />
-                  <span className="font-bold text-white text-sm">Git Repository Status & Working Tree</span>
+                  <span className="font-bold text-white text-sm">Git Telemetry & Diff Inspector</span>
                 </div>
+
                 <div className="flex items-center space-x-2">
+                  {/* Sub-view toggle */}
+                  <div className="flex bg-ink-deep rounded-md p-0.5 border border-hairline-violet text-xs font-mono">
+                    <button
+                      onClick={() => setGitView("status")}
+                      className={`px-2.5 py-1 rounded transition ${
+                        gitView === "status"
+                          ? "bg-white text-ink-deep font-bold"
+                          : "text-on-dark-muted hover:text-white"
+                      }`}
+                    >
+                      Status
+                    </button>
+                    <button
+                      onClick={() => setGitView("diff")}
+                      className={`px-2.5 py-1 rounded transition ${
+                        gitView === "diff"
+                          ? "bg-white text-ink-deep font-bold"
+                          : "text-on-dark-muted hover:text-white"
+                      }`}
+                    >
+                      Diff Viewer
+                    </button>
+                  </div>
+
+                  {gitView === "diff" && (
+                    <button
+                      onClick={() => setDiffStaged(!diffStaged)}
+                      className={`px-2 py-1 rounded border text-[11px] font-mono transition ${
+                        diffStaged
+                          ? "bg-accent-lime text-ink-deep border-accent-lime font-bold"
+                          : "bg-ink-deep text-on-dark-muted border-hairline-violet hover:text-white"
+                      }`}
+                    >
+                      {diffStaged ? "Staged" : "Unstaged"}
+                    </button>
+                  )}
+
                   <button
-                    onClick={loadGitStatus}
-                    disabled={gitLoading}
-                    className="p-1 text-on-dark-faint hover:text-white transition flex items-center space-x-1 text-xs font-mono"
-                    title="Refresh Git Status"
+                    onClick={loadGitInfo}
+                    className="p-1 text-on-dark-faint hover:text-white transition"
+                    title="Refresh Git Information"
                   >
                     <RefreshCw className={`w-3.5 h-3.5 ${gitLoading ? "animate-spin text-accent-lime" : ""}`} />
-                    <span>Refresh</span>
-                  </button>
-                  <button
-                    onClick={() => handleCopyConfig(gitStatus)}
-                    className="p-1 text-on-dark-faint hover:text-white transition flex items-center space-x-1 text-xs font-mono"
-                    title="Copy Git Output"
-                  >
-                    {copied ? <Check className="w-3.5 h-3.5 text-accent-lime" /> : <Copy className="w-3.5 h-3.5" />}
-                    <span>{copied ? "Copied" : "Copy"}</span>
                   </button>
                 </div>
               </div>
 
-              {/* Full Untruncated Git Status Output */}
-              <div className="mt-4 bg-ink-deep border border-hairline-violet rounded-lg p-4 font-mono text-xs overflow-auto max-h-72 min-h-[220px]">
+              {/* Output Display Area */}
+              <div className="mt-4 bg-ink-deep border border-hairline-violet rounded-lg p-4 font-mono text-xs overflow-auto max-h-80 min-h-[220px]">
                 {gitLoading ? (
                   <div className="flex items-center space-x-2 text-on-dark-muted py-8 justify-center">
                     <RefreshCw className="w-4 h-4 animate-spin text-accent-lime" />
-                    <span>Querying git repository status...</span>
+                    <span>Querying git repository telemetry...</span>
                   </div>
-                ) : gitStatus ? (
-                  <pre className="text-on-dark-light whitespace-pre leading-relaxed select-text">
-                    {gitStatus}
-                  </pre>
+                ) : gitView === "status" ? (
+                  gitStatus ? (
+                    <pre className="text-on-dark-light whitespace-pre leading-relaxed select-text font-mono">
+                      {gitStatus}
+                    </pre>
+                  ) : (
+                    <div className="text-on-dark-muted py-8 text-center">
+                      <FolderGit2 className="w-8 h-8 mx-auto mb-2 opacity-40 text-on-dark-faint" />
+                      <p>No git repository detected in this project root.</p>
+                    </div>
+                  )
                 ) : (
-                  <div className="text-on-dark-muted py-8 text-center">
-                    <FolderGit2 className="w-8 h-8 mx-auto mb-2 opacity-40 text-on-dark-faint" />
-                    <p>No git repository detected in this project root.</p>
-                  </div>
+                  gitDiff ? (
+                    <div className="space-y-0.5 leading-relaxed font-mono select-text">
+                      {gitDiff.split("\n").map((line, idx) => {
+                        let lineClass = "text-on-dark-light";
+                        if (line.startsWith("+") && !line.startsWith("+++")) {
+                          lineClass = "text-accent-lime bg-accent-lime/10 px-1 rounded";
+                        } else if (line.startsWith("-") && !line.startsWith("---")) {
+                          lineClass = "text-accent-pink bg-accent-pink/10 px-1 rounded";
+                        } else if (line.startsWith("@@")) {
+                          lineClass = "text-accent-violet font-bold";
+                        }
+                        return (
+                          <div key={idx} className={`${lineClass} font-mono whitespace-pre`}>
+                            {line || " "}
+                          </div>
+                        );
+                      })}
+                    </div>
+                  ) : (
+                    <div className="text-on-dark-muted py-8 text-center">
+                      <Code2 className="w-8 h-8 mx-auto mb-2 opacity-40 text-on-dark-faint" />
+                      <p>Clean working tree. No {diffStaged ? "staged" : "unstaged"} differences found.</p>
+                    </div>
+                  )
                 )}
               </div>
             </div>
 
             <div className="mt-4 pt-3 border-t border-hairline-violet flex items-center justify-between text-xs font-mono text-on-dark-muted">
-              <span>Structured Git tool: <code className="text-white">get_git_status</code></span>
-              <span className="text-accent-lime">Live branch & unstaged diff detection</span>
+              <span>Tools: <code className="text-white">get_git_status</code>, <code className="text-white">get_git_diff</code></span>
+              <span className="text-accent-lime">Colorized Git Diffs Live</span>
             </div>
           </div>
         </div>
@@ -288,7 +537,7 @@ export const ProjectHub: React.FC = () => {
           </span>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-4 gap-6 w-full">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 w-full">
           {projects.map((proj) => {
             const isActive = proj.isActive;
             return (
@@ -303,17 +552,33 @@ export const ProjectHub: React.FC = () => {
                 <div>
                   <div className="flex items-center justify-between mb-2">
                     <span className="text-lg font-bold text-white tracking-tight truncate">{proj.name}</span>
-                    {isActive ? (
-                      <span className="bg-accent-lime text-ink-deep text-[10px] font-bold px-2 py-0.5 rounded-[4px] uppercase tracking-[0.2px]">
-                        Active
-                      </span>
-                    ) : (
-                      !proj.exists && (
-                        <span className="bg-accent-pink/20 text-accent-pink border border-accent-pink/30 text-[10px] font-bold px-1.5 py-0.5 rounded-[4px]">
-                          Path Missing
+                    <div className="flex items-center space-x-1.5">
+                      {isActive ? (
+                        <span className="bg-accent-lime text-ink-deep text-[10px] font-bold px-2 py-0.5 rounded-[4px] uppercase tracking-[0.2px]">
+                          Active
                         </span>
-                      )
-                    )}
+                      ) : (
+                        !proj.exists && (
+                          <span className="bg-accent-pink/20 text-accent-pink border border-accent-pink/30 text-[10px] font-bold px-1.5 py-0.5 rounded-[4px]">
+                            Path Missing
+                          </span>
+                        )
+                      )}
+                      <button
+                        onClick={() => openEditModal(proj)}
+                        className="p-1 rounded text-on-dark-muted hover:text-white transition"
+                        title="Edit project"
+                      >
+                        <Edit2 className="w-3 h-3" />
+                      </button>
+                      <button
+                        onClick={() => handleDeleteProject(proj.name)}
+                        className="p-1 rounded text-on-dark-muted hover:text-accent-pink transition"
+                        title="Delete project"
+                      >
+                        <Trash2 className="w-3 h-3" />
+                      </button>
+                    </div>
                   </div>
 
                   <p className="text-xs font-mono text-on-dark-muted truncate mb-4" title={proj.root}>
@@ -339,7 +604,7 @@ export const ProjectHub: React.FC = () => {
                   </div>
                 </div>
 
-                <div className="mt-5 pt-3 border-t border-hairline-violet flex items-center justify-end">
+                <div className="mt-5 pt-3 border-t border-hairline-violet flex items-center justify-between">
                   {isActive ? (
                     <span className="text-xs text-accent-lime font-mono flex items-center space-x-1.5 font-bold">
                       <Check className="w-4 h-4 text-accent-lime" />
@@ -347,13 +612,21 @@ export const ProjectHub: React.FC = () => {
                     </span>
                   ) : (
                     <button
-                      onClick={() => handleSwitch(proj.name)}
+                      onClick={() => handleSwitch(proj.name, true)}
                       className="btn-cap bg-ink-deep hover:bg-white hover:text-ink-deep text-white border border-hairline-violet text-xs px-3.5 py-1.5 rounded-md transition flex items-center space-x-1.5 font-bold"
                     >
-                      <span>Switch to this</span>
+                      <span>Switch & Sync</span>
                       <ArrowRight className="w-3.5 h-3.5" />
                     </button>
                   )}
+
+                  <button
+                    onClick={() => handleCopyPath(proj.root)}
+                    className="p-1 text-on-dark-faint hover:text-white transition"
+                    title="Copy path"
+                  >
+                    <Copy className="w-3 h-3" />
+                  </button>
                 </div>
               </div>
             );
@@ -379,7 +652,7 @@ export const ProjectHub: React.FC = () => {
             </div>
 
             <p className="text-xs text-on-dark-muted">
-              Copy and paste this configuration block into your editor's MCP settings to immediately enable all 17 local development tools:
+              Apply configuration directly into your editor's MCP config file with 1 click, or copy the JSON block manually:
             </p>
 
             {/* Editor selection tabs */}
@@ -409,21 +682,30 @@ export const ProjectHub: React.FC = () => {
               <pre className="overflow-x-auto max-h-60 text-white">
                 {JSON.stringify(editorConfigs[selectedEditor] || {}, null, 2)}
               </pre>
-              <button
-                onClick={() =>
-                  handleCopyConfig(JSON.stringify(editorConfigs[selectedEditor] || {}, null, 2))
-                }
-                className="btn-cap absolute top-3 right-3 bg-surface-night hover:bg-white hover:text-ink-deep border border-hairline-violet text-white px-2.5 py-1 rounded flex items-center space-x-1 text-[11px]"
-              >
-                {copied ? <Check className="w-3.5 h-3.5 text-accent-lime" /> : <Copy className="w-3.5 h-3.5" />}
-                <span>{copied ? "Copied" : "Copy"}</span>
-              </button>
+              <div className="absolute top-3 right-3 flex items-center space-x-2">
+                <button
+                  onClick={() => handleSyncEditors(selectedEditor)}
+                  className="btn-cap bg-accent-lime text-ink-deep hover:bg-opacity-90 px-2.5 py-1 rounded flex items-center space-x-1 text-[11px] font-bold shadow"
+                >
+                  <Sparkles className="w-3 h-3" />
+                  <span>Apply to Editor</span>
+                </button>
+                <button
+                  onClick={() =>
+                    handleCopyConfig(JSON.stringify(editorConfigs[selectedEditor] || {}, null, 2))
+                  }
+                  className="btn-cap bg-surface-night hover:bg-white hover:text-ink-deep border border-hairline-violet text-white px-2.5 py-1 rounded flex items-center space-x-1 text-[11px]"
+                >
+                  {copied ? <Check className="w-3.5 h-3.5 text-accent-lime" /> : <Copy className="w-3.5 h-3.5" />}
+                  <span>{copied ? "Copied" : "Copy"}</span>
+                </button>
+              </div>
             </div>
 
             <div className="text-[11px] text-on-dark-muted">
-              <span className="font-bold text-white">Config Location: </span>
+              <span className="font-bold text-white">Target Config Location: </span>
               {selectedEditor === "claude" && "~/.config/Claude/claude_desktop_config.json"}
-              {selectedEditor === "cursor" && "~/.cursor/mcp.json or <project>/.cursor/mcp.json"}
+              {selectedEditor === "cursor" && "~/.cursor/mcp.json"}
               {selectedEditor === "windsurf" && "~/.codeium/windsurf/mcp_config.json"}
               {selectedEditor === "zed" && "~/.config/zed/settings.json"}
             </div>
@@ -457,7 +739,7 @@ export const ProjectHub: React.FC = () => {
                   required
                   value={newName}
                   onChange={(e) => setNewName(e.target.value)}
-                  placeholder="e.g. my-vite-app"
+                  placeholder="e.g. my-app"
                   className="w-full bg-ink-deep border border-hairline-cool/40 rounded-md px-3 py-2 text-white font-mono focus:outline-none focus:ring-1 focus:ring-accent-lime"
                 />
               </div>
@@ -469,7 +751,7 @@ export const ProjectHub: React.FC = () => {
                   required
                   value={newRoot}
                   onChange={(e) => setNewRoot(e.target.value)}
-                  placeholder="e.g. /home/user/projects/my-vite-app"
+                  placeholder="e.g. /home/rajan/Projects/my-app"
                   className="w-full bg-ink-deep border border-hairline-cool/40 rounded-md px-3 py-2 text-white font-mono focus:outline-none focus:ring-1 focus:ring-accent-lime"
                 />
               </div>
@@ -509,6 +791,87 @@ export const ProjectHub: React.FC = () => {
                 className="btn-cap bg-white text-ink-deep hover:bg-slate-100 px-4 py-2 rounded-md font-bold text-xs"
               >
                 Save Project
+              </button>
+            </div>
+          </form>
+        </div>
+      )}
+
+      {/* Edit Project Modal */}
+      {editModalOpen && (
+        <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
+          <form
+            onSubmit={handleUpdateProject}
+            className="bg-surface-night border border-hairline-violet rounded-xl max-w-lg w-full p-6 shadow-2xl space-y-4"
+          >
+            <div className="flex items-center justify-between border-b border-hairline-violet pb-3">
+              <h3 className="text-lg font-bold text-white">Edit Project Configuration</h3>
+              <button
+                type="button"
+                onClick={() => setEditModalOpen(false)}
+                className="text-on-dark-muted hover:text-white text-sm"
+              >
+                ✕
+              </button>
+            </div>
+
+            <div className="space-y-3 text-xs">
+              <div>
+                <label className="block text-white font-bold mb-1">Project Name</label>
+                <input
+                  type="text"
+                  required
+                  value={editName}
+                  onChange={(e) => setEditName(e.target.value)}
+                  className="w-full bg-ink-deep border border-hairline-cool/40 rounded-md px-3 py-2 text-white font-mono focus:outline-none focus:ring-1 focus:ring-accent-lime"
+                />
+              </div>
+
+              <div>
+                <label className="block text-white font-bold mb-1">Project Root Absolute Path</label>
+                <input
+                  type="text"
+                  required
+                  value={editRoot}
+                  onChange={(e) => setEditRoot(e.target.value)}
+                  className="w-full bg-ink-deep border border-hairline-cool/40 rounded-md px-3 py-2 text-white font-mono focus:outline-none focus:ring-1 focus:ring-accent-lime"
+                />
+              </div>
+
+              <div>
+                <label className="block text-white font-bold mb-1">Allowed Ports</label>
+                <input
+                  type="text"
+                  value={editPorts}
+                  onChange={(e) => setEditPorts(e.target.value)}
+                  className="w-full bg-ink-deep border border-hairline-cool/40 rounded-md px-3 py-2 text-white font-mono focus:outline-none focus:ring-1 focus:ring-accent-lime"
+                />
+              </div>
+
+              <div>
+                <label className="block text-white font-bold mb-1">Allowed Shell Commands</label>
+                <textarea
+                  rows={3}
+                  value={editCommands}
+                  onChange={(e) => setEditCommands(e.target.value)}
+                  className="w-full bg-ink-deep border border-hairline-cool/40 rounded-md px-3 py-2 text-white font-mono focus:outline-none focus:ring-1 focus:ring-accent-lime"
+                />
+              </div>
+            </div>
+
+            <div className="flex items-center justify-end space-x-3 pt-3 border-t border-hairline-violet">
+              <button
+                type="button"
+                onClick={() => setEditModalOpen(false)}
+                className="btn-cap px-4 py-2 text-on-dark-muted hover:text-white text-xs"
+              >
+                Cancel
+              </button>
+              <button
+                type="submit"
+                className="btn-cap bg-accent-lime text-ink-deep hover:bg-opacity-90 px-4 py-2 rounded-md font-bold text-xs"
+              >
+                Update Project
               </button>
             </div>
           </form>

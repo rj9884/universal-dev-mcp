@@ -1,7 +1,10 @@
 import React, { useState, useEffect } from "react";
 import { Navbar } from "./components/Navbar.js";
 import { Home } from "./components/Home.js";
+import { FeaturesHub } from "./components/FeaturesHub.js";
 import { ProjectHub } from "./components/ProjectHub.js";
+import { ConsoleRunner } from "./components/ConsoleRunner.js";
+import { FileExplorer } from "./components/FileExplorer.js";
 import { ActivityFeed } from "./components/ActivityFeed.js";
 import { BackupCenter } from "./components/BackupCenter.js";
 import { DevRadar } from "./components/DevRadar.js";
@@ -40,7 +43,10 @@ export const App: React.FC = () => {
             toolsCount={serverInfo?.tools_count}
           />
         )}
+        {activeTab === "features" && <FeaturesHub onNavigate={setActiveTab} />}
         {activeTab === "projects" && <ProjectHub />}
+        {activeTab === "console" && <ConsoleRunner />}
+        {activeTab === "explorer" && <FileExplorer />}
         {activeTab === "activity" && <ActivityFeed events={events} onClear={clearEvents} />}
         {activeTab === "backups" && <BackupCenter />}
         {activeTab === "radar" && <DevRadar />}

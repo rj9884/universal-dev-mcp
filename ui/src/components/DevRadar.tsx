@@ -1,22 +1,31 @@
 import React, { useState, useEffect } from "react";
-import { RefreshCw, ExternalLink, Globe, Server } from "lucide-react";
+import { RefreshCw, ExternalLink, Globe, Server, Radio } from "lucide-react";
 import { PortScanServer, scanDevPorts, callMcpTool } from "../api/client.js";
 
 export const DevRadar: React.FC = () => {
   const [servers, setServers] = useState<PortScanServer[]>([]);
   const [scanning, setScanning] = useState<boolean>(false);
-  const [inspectorPort, setInspectorPort] = useState<number>(5173);
+  const [customPorts, setCustomPorts] = useState<string>("3000,3333,5173,8080,4200,8000");
+
+  // Page Inspector state
+  const [inspectorPort, setInspectorPort] = useState<number>(3333);
   const [inspectorPath, setInspectorPath] = useState<string>("/");
   const [inspectResult, setInspectResult] = useState<string>("");
   const [inspecting, setInspecting] = useState<boolean>(false);
 
+  // Single Port Probe state
+  const [probePort, setProbePort] = useState<number>(3333);
+  const [probeResult, setProbeResult] = useState<string>("");
+  const [probing, setProbing] = useState<boolean>(false);
+
   const runScan = async () => {
     setScanning(true);
     try {
-      const data = await scanDevPorts();
+      const data = await scanDevPorts(customPorts);
       setServers(data.activeServers || []);
       if (data.activeServers && data.activeServers.length > 0) {
         setInspectorPort(data.activeServers[0].port);
+        setProbePort(data.activeServers[0].port);
       }
     } catch {
       /* ignore */
@@ -45,6 +54,21 @@ export const DevRadar: React.FC = () => {
     }
   };
 
+  const handleProbePort = async (portToProbe?: number) => {
+    const target = portToProbe || probePort;
+    setProbing(true);
+    try {
+      const res = await callMcpTool("check_port", {
+        port: Number(target),
+      });
+      setProbeResult(res.result);
+    } catch (err: any) {
+      setProbeResult(`Probe failed: ${err.message}`);
+    } finally {
+      setProbing(false);
+    }
+  };
+
   return (
     <div className="space-y-8">
       {/* Header */}
@@ -57,26 +81,36 @@ export const DevRadar: React.FC = () => {
             </span>
           </div>
           <p className="text-on-dark-muted text-sm mt-1">
-            Detect running local dev servers (Vite, Next.js, CRA, Express, Django) in parallel and inspect their DOM structure.
+            Detect running local dev servers in parallel, probe port responsiveness with HTTP headers, and inspect DOM page structure.
           </p>
         </div>
 
-        <button
-          onClick={runScan}
-          disabled={scanning}
-          className="btn-cap bg-white text-ink-deep hover:bg-surface-press-stronger px-4 py-2 rounded-md transition flex items-center space-x-2 text-xs font-bold shadow-glow"
-        >
-          <RefreshCw className={`w-3.5 h-3.5 ${scanning ? "animate-spin" : ""}`} />
-          <span>{scanning ? "Scanning Ports..." : "Scan Localhost"}</span>
-        </button>
+        <div className="flex items-center space-x-3">
+          <input
+            type="text"
+            value={customPorts}
+            onChange={(e) => setCustomPorts(e.target.value)}
+            placeholder="3000,5173,8080"
+            className="w-48 bg-surface-night border border-hairline-violet rounded-md px-3 py-1.5 text-xs text-white font-mono focus:outline-none focus:border-accent-lime"
+          />
+          <button
+            onClick={runScan}
+            disabled={scanning}
+            className="btn-cap bg-white text-ink-deep hover:bg-surface-press-stronger px-4 py-2 rounded-md transition flex items-center space-x-2 text-xs font-bold shadow-glow"
+          >
+            <RefreshCw className={`w-3.5 h-3.5 ${scanning ? "animate-spin" : ""}`} />
+            <span>{scanning ? "Scanning..." : "Scan Ports"}</span>
+          </button>
+        </div>
       </div>
 
       {/* Radar Matrix Grid */}
       <div className="grid grid-cols-1 xl:grid-cols-12 gap-6 w-full items-stretch">
-        <div className="xl:col-span-4 bg-surface-night border border-hairline-violet rounded-xl p-5 flex flex-col justify-between">
-          <div>
+        {/* Left column: Active servers & single port probe */}
+        <div className="xl:col-span-4 space-y-6 flex flex-col justify-between">
+          <div className="bg-surface-night border border-hairline-violet rounded-xl p-5">
             <h3 className="text-xs font-bold text-white uppercase tracking-[0.2px] flex items-center justify-between pb-3 border-b border-hairline-violet mb-3">
-              <span>Detected Active Dev Servers</span>
+              <span>Detected Dev Servers</span>
               <span className="text-accent-lime font-mono">{servers.length} Active</span>
             </h3>
 
@@ -85,17 +119,17 @@ export const DevRadar: React.FC = () => {
                 <Server className="w-6 h-6 mx-auto mb-2 opacity-50 text-on-dark-faint" />
                 <p>No active dev servers responded on scanned ports.</p>
                 <p className="text-[10px] mt-1 text-on-dark-muted/70">
-                  Start your dev server (e.g. npm run dev) on port 3000, 5173, or 8080.
+                  Verify servers on ports {customPorts}.
                 </p>
               </div>
             ) : (
-              <div className="space-y-2.5 max-h-[580px] overflow-y-auto pr-1">
+              <div className="space-y-2.5 max-h-[380px] overflow-y-auto pr-1">
                 {servers.map((s) => (
                   <div
                     key={s.port}
                     onClick={() => {
                       setInspectorPort(s.port);
-                      handleInspect();
+                      setProbePort(s.port);
                     }}
                     className={`bg-ink-deep border p-4 rounded-xl cursor-pointer transition ${
                       inspectorPort === s.port
@@ -110,23 +144,25 @@ export const DevRadar: React.FC = () => {
                           localhost:{s.port}
                         </span>
                       </div>
-                      <span className="bg-surface-night border border-hairline-violet text-accent-lime text-[11px] font-mono px-2 py-0.5 rounded">
-                        {s.latencyMs}ms
-                      </span>
+                      <div className="flex items-center space-x-2">
+                        <span className="bg-surface-night border border-hairline-violet text-accent-lime text-[11px] font-mono px-2 py-0.5 rounded">
+                          {s.latencyMs}ms
+                        </span>
+                        <a
+                          href={`http://localhost:${s.port}`}
+                          target="_blank"
+                          rel="noreferrer"
+                          onClick={(e) => e.stopPropagation()}
+                          className="p-1 text-on-dark-muted hover:text-white"
+                          title="Open in new tab"
+                        >
+                          <ExternalLink className="w-3.5 h-3.5" />
+                        </a>
+                      </div>
                     </div>
 
-                    <div className="mt-2 text-xs font-mono text-on-dark-muted flex items-center justify-between">
-                      <span className="truncate">{s.title || "(Untitled page)"}</span>
-                      <a
-                        href={`http://localhost:${s.port}`}
-                        target="_blank"
-                        rel="noreferrer"
-                        onClick={(e) => e.stopPropagation()}
-                        className="text-on-dark-muted hover:text-white ml-2"
-                        title="Open in new tab"
-                      >
-                        <ExternalLink className="w-3.5 h-3.5" />
-                      </a>
+                    <div className="mt-2 text-xs font-mono text-on-dark-muted truncate">
+                      {s.title || s.serverHeader || "(Active localhost service)"}
                     </div>
                   </div>
                 ))}
@@ -134,9 +170,36 @@ export const DevRadar: React.FC = () => {
             )}
           </div>
 
-          <div className="pt-3 mt-3 border-t border-hairline-violet text-xs font-mono text-on-dark-faint flex items-center justify-between">
-            <span>Scanned: 3000, 5173, 8080, 4200</span>
-            <span className="text-accent-lime">Parallel scan</span>
+          {/* Quick Single Port Probe Box */}
+          <div className="bg-surface-night border border-hairline-violet rounded-xl p-5 space-y-3">
+            <div className="flex items-center justify-between border-b border-hairline-violet pb-2">
+              <span className="text-xs font-bold text-white uppercase">Instant Port Probe</span>
+              <code className="text-[10px] font-mono text-accent-lime">check_port</code>
+            </div>
+
+            <div className="flex items-center space-x-2">
+              <input
+                type="number"
+                value={probePort}
+                onChange={(e) => setProbePort(Number(e.target.value))}
+                placeholder="Port"
+                className="w-28 bg-ink-deep border border-hairline-violet rounded-md px-3 py-1.5 text-xs text-white font-mono focus:outline-none focus:border-accent-lime"
+              />
+              <button
+                onClick={() => handleProbePort()}
+                disabled={probing}
+                className="btn-cap bg-accent-lime text-ink-deep hover:bg-opacity-90 font-bold px-3 py-1.5 rounded-md text-xs transition flex items-center space-x-1.5 shadow"
+              >
+                <Radio className="w-3.5 h-3.5 text-ink-deep" />
+                <span>{probing ? "Probing..." : "Probe Port"}</span>
+              </button>
+            </div>
+
+            {probeResult && (
+              <pre className="bg-ink-deep border border-hairline-violet rounded p-3 text-[11px] font-mono text-on-dark-light max-h-36 overflow-y-auto whitespace-pre-wrap select-text">
+                {probeResult}
+              </pre>
+            )}
           </div>
         </div>
 
@@ -176,7 +239,7 @@ export const DevRadar: React.FC = () => {
               <button
                 type="submit"
                 disabled={inspecting}
-                className="btn-cap bg-white text-ink-deep hover:bg-slate-100 px-5 py-2 rounded-md font-bold text-xs shrink-0"
+                className="btn-cap bg-white text-ink-deep hover:bg-slate-100 px-5 py-2 rounded-md font-bold text-xs shrink-0 shadow"
               >
                 {inspecting ? "Fetching..." : "Inspect Page"}
               </button>
