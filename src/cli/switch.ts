@@ -34,68 +34,25 @@ interface ProjectsFile {
   projects: Project[];
 }
 
+import {
+  getClaudeConfigPath,
+  getCursorConfigPath,
+  getWindsurfConfigPath,
+  getZedConfigPath,
+  applySwitchToClaude,
+  applySwitchToCursor,
+  applySwitchToWindsurf,
+  applySwitchToZed,
+  syncProjectToEditors,
+  SupportedEditor,
+} from "../core/editor-sync.js";
+
 function getProjectsFilePath(): string {
   return path.resolve(__dirname, "..", "..", "projects.json");
 }
 
 function getMcpServerPath(): string {
   return path.resolve(__dirname, "..", "server.js");
-}
-
-function getClaudeConfigPath(): string | null {
-  const platform = os.platform();
-
-  if (platform === "win32") {
-    const standard = path.join(process.env.APPDATA || "", "Claude", "claude_desktop_config.json");
-    if (fs.existsSync(standard)) return standard;
-
-    const pkgsDir = path.join(process.env.LOCALAPPDATA || "", "Packages");
-    if (fs.existsSync(pkgsDir)) {
-      try {
-        const claudeDir = fs.readdirSync(pkgsDir).find((d) => d.startsWith("Claude_"));
-        if (claudeDir) {
-          const storePath = path.join(
-            pkgsDir,
-            claudeDir,
-            "LocalCache",
-            "Roaming",
-            "Claude",
-            "claude_desktop_config.json"
-          );
-          if (fs.existsSync(storePath)) return storePath;
-        }
-      } catch {
-        /* ignore */
-      }
-    }
-  } else if (platform === "darwin") {
-    return path.join(os.homedir(), "Library", "Application Support", "Claude", "claude_desktop_config.json");
-  } else {
-    return path.join(os.homedir(), ".config", "Claude", "claude_desktop_config.json");
-  }
-
-  return null;
-}
-
-function getCursorConfigPath(): string | null {
-  const home = os.homedir();
-  const dir = path.join(home, ".cursor");
-  return path.join(dir, "mcp.json");
-}
-
-function getWindsurfConfigPath(): string | null {
-  const home = os.homedir();
-  const dir = path.join(home, ".codeium", "windsurf");
-  return path.join(dir, "mcp_config.json");
-}
-
-function getZedConfigPath(): string | null {
-  const platform = os.platform();
-  const home = os.homedir();
-  if (platform === "darwin") {
-    return path.join(home, "Library", "Application Support", "Zed", "settings.json");
-  }
-  return path.join(home, ".config", "zed", "settings.json");
 }
 
 const c = {
@@ -150,132 +107,7 @@ function saveProjects(projects: Project[]): void {
   fs.writeFileSync(file, JSON.stringify(data, null, 2), "utf8");
 }
 
-function writeJsonConfig(filePath: string, updater: (config: any) => any): boolean {
-  try {
-    const dir = path.dirname(filePath);
-    if (!fs.existsSync(dir)) {
-      fs.mkdirSync(dir, { recursive: true });
-    }
-    let config: any = {};
-    if (fs.existsSync(filePath)) {
-      try {
-        config = JSON.parse(fs.readFileSync(filePath, "utf8"));
-      } catch {
-        config = {};
-      }
-    }
-    const updated = updater(config);
-    fs.writeFileSync(filePath, JSON.stringify(updated, null, 2), "utf8");
-    return true;
-  } catch (e) {
-    return false;
-  }
-}
 
-function applySwitchToClaude(project: Project): boolean {
-  const configPath = getClaudeConfigPath();
-  if (!configPath) return false;
-
-  const mcpEntry = {
-    command: "node",
-    args: [getMcpServerPath()],
-    env: {
-      PROJECT_ROOT: project.root,
-      ALLOWED_PORTS: project.allowed_ports,
-      ALLOWED_COMMANDS: project.allowed_commands,
-    },
-  };
-
-  return writeJsonConfig(configPath, (config) => {
-    if (!config.mcpServers || typeof config.mcpServers !== "object") {
-      config.mcpServers = {};
-    }
-    config.mcpServers["universal-dev-mcp"] = mcpEntry;
-    return config;
-  });
-}
-
-function applySwitchToCursor(project: Project): boolean {
-  const configPath = getCursorConfigPath();
-  if (!configPath) return false;
-
-  const mcpEntry = {
-    command: "node",
-    args: [getMcpServerPath()],
-    env: {
-      PROJECT_ROOT: project.root,
-      ALLOWED_PORTS: project.allowed_ports,
-      ALLOWED_COMMANDS: project.allowed_commands,
-    },
-  };
-
-  return writeJsonConfig(configPath, (config) => {
-    if (!config.mcpServers || typeof config.mcpServers !== "object") {
-      config.mcpServers = {};
-    }
-    config.mcpServers["universal-dev-mcp"] = mcpEntry;
-    return config;
-  });
-}
-
-function applySwitchToWindsurf(project: Project): boolean {
-  const configPath = getWindsurfConfigPath();
-  if (!configPath) return false;
-
-  const mcpEntry = {
-    command: "node",
-    args: [getMcpServerPath()],
-    env: {
-      PROJECT_ROOT: project.root,
-      ALLOWED_PORTS: project.allowed_ports,
-      ALLOWED_COMMANDS: project.allowed_commands,
-    },
-  };
-
-  return writeJsonConfig(configPath, (config) => {
-    if (!config.mcpServers || typeof config.mcpServers !== "object") {
-      config.mcpServers = {};
-    }
-    config.mcpServers["universal-dev-mcp"] = mcpEntry;
-    return config;
-  });
-}
-
-function applySwitchToZed(project: Project): boolean {
-  const configPath = getZedConfigPath();
-  if (!configPath) return false;
-
-  const serverEntry = {
-    id: "universal-dev-mcp",
-    command: "node",
-    args: [getMcpServerPath()],
-    env: {
-      PROJECT_ROOT: project.root,
-      ALLOWED_PORTS: project.allowed_ports,
-      ALLOWED_COMMANDS: project.allowed_commands,
-    },
-  };
-
-  return writeJsonConfig(configPath, (config) => {
-    if (!config.experimental || typeof config.experimental !== "object") {
-      config.experimental = {};
-    }
-    if (!config.experimental.model_context_protocol || typeof config.experimental.model_context_protocol !== "object") {
-      config.experimental.model_context_protocol = { servers: [] };
-    }
-    const servers: any[] = Array.isArray(config.experimental.model_context_protocol.servers)
-      ? config.experimental.model_context_protocol.servers
-      : [];
-    const idx = servers.findIndex((s) => s.id === "universal-dev-mcp");
-    if (idx >= 0) {
-      servers[idx] = serverEntry;
-    } else {
-      servers.push(serverEntry);
-    }
-    config.experimental.model_context_protocol.servers = servers;
-    return config;
-  });
-}
 
 function prompt(question: string): Promise<string> {
   const rl = readline.createInterface({ input: process.stdin, output: process.stdout });
