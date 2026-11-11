@@ -8,7 +8,6 @@ import {
   Cpu,
   ArrowRight,
   GitBranch,
-  Terminal,
   Trash2,
   Edit2,
   Code2,
@@ -245,16 +244,14 @@ export const ProjectHub: React.FC = () => {
       )}
 
       {/* AI Editor Synchronization Status Bar */}
-      <div className="bg-surface-night border border-hairline-violet rounded-xl p-5 space-y-4">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-hairline-violet pb-3">
-          <div>
-            <h3 className="text-sm font-bold text-white flex items-center space-x-2">
-              <Cpu className="w-4 h-4 text-accent-lime" />
-              <span>AI Editor Workspace Synchronization</span>
-            </h3>
-            <p className="text-xs text-on-dark-muted mt-0.5">
-              Sync active PROJECT_ROOT to editor configuration files without running <code className="text-white">npx mcp-switch use</code> in terminal.
-            </p>
+      <div className="bg-surface-night border border-hairline-violet rounded-xl p-4 space-y-3">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+          <div className="flex items-center space-x-2">
+            <Cpu className="w-4 h-4 text-accent-lime shrink-0" />
+            <h3 className="text-sm font-bold text-white">AI Editor Sync</h3>
+            <span className="text-xs text-on-dark-muted hidden md:inline">
+              (1-click update for Claude, Cursor, Windsurf & Zed)
+            </span>
           </div>
 
           {/* Quick sync controls */}
@@ -276,50 +273,39 @@ export const ProjectHub: React.FC = () => {
               className="btn-cap bg-accent-lime text-ink-deep hover:bg-opacity-90 font-bold px-3.5 py-1.5 rounded-md text-xs transition flex items-center space-x-1.5 shadow disabled:opacity-50"
             >
               <Sparkles className="w-3.5 h-3.5 text-ink-deep" />
-              <span>{syncingEditor ? "Syncing..." : "Sync to Editors"}</span>
+              <span>{syncingEditor ? "Syncing..." : "Sync Editors"}</span>
             </button>
           </div>
         </div>
 
-        {/* Editor Badges Grid */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        {/* Compact Editor Status Row */}
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 pt-1">
           {editors.map((ed) => {
             const isConfigured = ed.configured;
-            const exists = ed.exists;
             return (
               <div
                 key={ed.id}
-                className="bg-ink-deep border border-hairline-violet/70 rounded-lg p-3 space-y-2"
+                className="bg-ink-deep border border-hairline-violet rounded-md px-3 py-2 flex items-center justify-between"
               >
-                <div className="flex items-center justify-between">
-                  <span className="text-xs font-bold text-white">{ed.name}</span>
+                <div className="flex items-center space-x-2 truncate">
                   <span
-                    className={`text-[10px] font-mono px-2 py-0.5 rounded-[3px] font-bold uppercase ${
+                    className={`w-2 h-2 rounded-full shrink-0 ${
                       isConfigured
-                        ? "bg-accent-lime/20 text-accent-lime border border-accent-lime/40"
-                        : exists
-                        ? "bg-yellow-400/20 text-yellow-300 border border-yellow-400/40"
-                        : "bg-surface-night text-on-dark-muted border border-hairline-violet"
+                        ? "bg-accent-lime shadow-[0_0_6px_rgba(194,239,78,0.7)]"
+                        : ed.exists
+                        ? "bg-yellow-400"
+                        : "bg-surface-night border border-hairline-violet"
                     }`}
-                  >
-                    {isConfigured ? "Configured" : exists ? "Detected" : "Not Found"}
-                  </span>
+                  />
+                  <span className="text-xs font-bold text-white truncate">{ed.name}</span>
                 </div>
-                <div className="text-[10px] font-mono text-on-dark-muted truncate" title={ed.configPath || ""}>
-                  {ed.configPath ? ed.configPath.replace(process.env.HOME || "", "~") : "Path unavailable"}
-                </div>
-                <div className="pt-1 flex items-center justify-between">
-                  <span className="text-[10px] font-mono text-on-dark-faint">
-                    Root: {ed.configuredRoot ? ed.configuredRoot.split("/").pop() : "None"}
-                  </span>
-                  <button
-                    onClick={() => handleSyncEditors(ed.id)}
-                    disabled={syncingEditor}
-                    className="text-[10px] font-mono text-accent-lime hover:underline font-bold"
-                  >
-                    Apply Now
-                  </button>
-                </div>
+                <button
+                  onClick={() => handleSyncEditors(ed.id)}
+                  disabled={syncingEditor}
+                  className="text-[10px] font-mono text-accent-lime hover:underline font-bold shrink-0 ml-1"
+                >
+                  Apply
+                </button>
               </div>
             );
           })}
@@ -330,20 +316,19 @@ export const ProjectHub: React.FC = () => {
       {activeProject && (
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 w-full items-stretch">
           {/* Left Panel: Active Project Configuration */}
-          <div className="lg:col-span-5 bg-surface-night border border-hairline-violet rounded-xl p-6 flex flex-col justify-between space-y-6">
+          <div className="lg:col-span-5 bg-surface-night border border-hairline-violet rounded-xl p-5 flex flex-col justify-between space-y-5">
             <div className="space-y-4">
-              <div className="flex items-center justify-between border-b border-hairline-violet pb-4">
-                <div>
-                  <span className="text-[10px] font-mono uppercase tracking-wider text-accent-lime font-bold">
-                    Active Context Root
-                  </span>
-                  <h2 className="text-xl font-bold text-white tracking-tight flex items-center space-x-2 mt-0.5">
-                    <span>{activeProject.name}</span>
-                    <span className="w-2 h-2 rounded-full bg-accent-lime shadow-[0_0_8px_rgba(194,239,78,0.8)]" />
+              <div className="flex items-center justify-between border-b border-hairline-violet pb-3">
+                <div className="flex items-center space-x-2">
+                  <h2 className="text-lg font-bold text-white tracking-tight">
+                    {activeProject.name}
                   </h2>
+                  <span className="bg-accent-lime text-ink-deep text-[10px] font-bold px-1.5 py-0.2 rounded font-mono uppercase">
+                    Active
+                  </span>
                 </div>
 
-                <div className="flex items-center space-x-2">
+                <div className="flex items-center space-x-1.5">
                   <button
                     onClick={() => openEditModal(activeProject)}
                     className="p-1.5 rounded-md bg-ink-deep border border-hairline-violet text-on-dark-muted hover:text-white transition"
@@ -356,31 +341,31 @@ export const ProjectHub: React.FC = () => {
                     className="btn-cap bg-ink-deep border border-hairline-violet hover:border-accent-lime/60 text-white px-2.5 py-1 rounded text-xs transition flex items-center space-x-1 font-mono"
                   >
                     {copiedPath === activeProject.root ? (
-                      <Check className="w-3.5 h-3.5 text-accent-lime" />
+                      <Check className="w-3 h-3 text-accent-lime" />
                     ) : (
-                      <Copy className="w-3.5 h-3.5" />
+                      <Copy className="w-3 h-3" />
                     )}
-                    <span>{copiedPath === activeProject.root ? "Copied" : "Copy Path"}</span>
+                    <span>{copiedPath === activeProject.root ? "Copied" : "Copy"}</span>
                   </button>
                 </div>
               </div>
 
-              {/* Absolute Path Box */}
+              {/* Filesystem Path */}
               <div>
-                <label className="text-[10px] uppercase font-bold text-on-dark-faint block mb-1">
-                  Filesystem Location
-                </label>
+                <span className="text-[10px] uppercase font-bold text-on-dark-faint block mb-1">
+                  Location
+                </span>
                 <div className="bg-ink-deep border border-hairline-violet rounded-md px-3 py-2 font-mono text-xs text-on-dark-light break-all select-text">
                   {activeProject.root}
                 </div>
               </div>
 
-              {/* Ports Allowed */}
+              {/* Allowed Ports */}
               <div>
-                <label className="text-[10px] uppercase font-bold text-on-dark-faint block mb-1">
-                  Allowlisted Port Scanner Range
-                </label>
-                <div className="flex flex-wrap gap-1.5">
+                <span className="text-[10px] uppercase font-bold text-on-dark-faint block mb-1">
+                  Allowed Ports
+                </span>
+                <div className="flex flex-wrap gap-1">
                   {activeProject.allowed_ports.split(",").map((p) => (
                     <span
                       key={p}
@@ -394,33 +379,28 @@ export const ProjectHub: React.FC = () => {
 
               {/* Commands Allowed */}
               <div>
-                <label className="text-[10px] uppercase font-bold text-on-dark-faint block mb-1">
-                  Allowlisted Terminal Commands
-                </label>
-                <div className="bg-ink-deep border border-hairline-violet rounded-md p-2.5 space-y-1 font-mono text-xs max-h-36 overflow-y-auto">
-                  {activeProject.allowed_commands.split(",").map((cmd, i) => (
-                    <div key={i} className="flex items-center space-x-1.5 text-on-dark-light truncate">
-                      <Terminal className="w-3 h-3 text-accent-lime shrink-0" />
-                      <span className="truncate">{cmd.trim()}</span>
-                    </div>
-                  ))}
-                </div>
+                <span className="text-[10px] uppercase font-bold text-on-dark-faint block mb-1">
+                  Allowed Commands
+                </span>
+                <p className="bg-ink-deep border border-hairline-violet rounded-md px-3 py-2 font-mono text-xs text-on-dark-muted truncate">
+                  {activeProject.allowed_commands}
+                </p>
               </div>
             </div>
 
-            <div className="pt-4 border-t border-hairline-violet flex items-center justify-between text-xs font-mono text-on-dark-muted">
-              <span>Security Enforced</span>
-              <span className="text-accent-lime">Traversal Sandbox Active</span>
+            <div className="pt-3 border-t border-hairline-violet flex items-center justify-between text-xs font-mono text-on-dark-muted">
+              <span>Sandbox Confined</span>
+              <span className="text-accent-lime">Safe Rollbacks Active</span>
             </div>
           </div>
 
           {/* Right Panel: Live Git Status & Visual Git Diff Viewer */}
-          <div className="lg:col-span-7 bg-surface-night border border-hairline-violet rounded-xl p-6 flex flex-col justify-between">
+          <div className="lg:col-span-7 bg-surface-night border border-hairline-violet rounded-xl p-5 flex flex-col justify-between">
             <div>
               <div className="flex items-center justify-between border-b border-hairline-violet pb-3">
                 <div className="flex items-center space-x-2">
                   <GitBranch className="w-4 h-4 text-accent-lime" />
-                  <span className="font-bold text-white text-sm">Git Telemetry & Diff Inspector</span>
+                  <span className="font-bold text-white text-sm">Git Status & Diff</span>
                 </div>
 
                 <div className="flex items-center space-x-2">
@@ -472,7 +452,7 @@ export const ProjectHub: React.FC = () => {
               </div>
 
               {/* Output Display Area */}
-              <div className="mt-4 bg-ink-deep border border-hairline-violet rounded-lg p-4 font-mono text-xs overflow-auto max-h-80 min-h-[220px]">
+              <div className="mt-3 bg-ink-deep border border-hairline-violet rounded-lg p-3 font-mono text-xs overflow-auto max-h-72 min-h-[200px]">
                 {gitLoading ? (
                   <div className="flex items-center space-x-2 text-on-dark-muted py-8 justify-center">
                     <RefreshCw className="w-4 h-4 animate-spin text-accent-lime" />
@@ -518,13 +498,14 @@ export const ProjectHub: React.FC = () => {
               </div>
             </div>
 
-            <div className="mt-4 pt-3 border-t border-hairline-violet flex items-center justify-between text-xs font-mono text-on-dark-muted">
+            <div className="mt-3 pt-2 border-t border-hairline-violet flex items-center justify-between text-xs font-mono text-on-dark-muted">
               <span>Tools: <code className="text-white">get_git_status</code>, <code className="text-white">get_git_diff</code></span>
-              <span className="text-accent-lime">Colorized Git Diffs Live</span>
+              <span className="text-accent-lime">Live telemetry</span>
             </div>
           </div>
         </div>
       )}
+
 
       {/* Projects List Grid */}
       <div className="space-y-4 pt-2">

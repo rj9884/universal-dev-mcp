@@ -1,19 +1,15 @@
 import React, { useState, useEffect } from "react";
 import { Navbar } from "./components/Navbar.js";
 import { Home } from "./components/Home.js";
-import { FeaturesHub } from "./components/FeaturesHub.js";
 import { ProjectHub } from "./components/ProjectHub.js";
-import { ConsoleRunner } from "./components/ConsoleRunner.js";
-import { FileExplorer } from "./components/FileExplorer.js";
+import { Workbench } from "./components/Workbench.js";
 import { ActivityFeed } from "./components/ActivityFeed.js";
-import { BackupCenter } from "./components/BackupCenter.js";
-import { DevRadar } from "./components/DevRadar.js";
-import { ApiPlayground } from "./components/ApiPlayground.js";
 import { useActivityStream } from "./hooks/useActivityStream.js";
 import { fetchServerInfo, fetchEditorConfigs, ServerInfo } from "./api/client.js";
 
 export const App: React.FC = () => {
   const [activeTab, setActiveTab] = useState<string>("home");
+  const [workbenchSubTab, setWorkbenchSubTab] = useState<string>("console");
   const [serverInfo, setServerInfo] = useState<ServerInfo | null>(null);
   const [editorConfigs, setEditorConfigs] = useState<Record<string, unknown>>({});
   const { events, status: sseStatus, clear: clearEvents } = useActivityStream();
@@ -23,12 +19,34 @@ export const App: React.FC = () => {
     fetchEditorConfigs().then(setEditorConfigs).catch(() => {});
   }, []);
 
+  const handleNavigate = (target: string) => {
+    if (target === "home" || target === "projects" || target === "activity") {
+      setActiveTab(target);
+    } else if (
+      target === "workbench" ||
+      target === "console" ||
+      target === "explorer" ||
+      target === "radar" ||
+      target === "backups" ||
+      target === "playground" ||
+      target === "catalog" ||
+      target === "features"
+    ) {
+      if (target === "playground") setWorkbenchSubTab("api");
+      else if (target === "features") setWorkbenchSubTab("catalog");
+      else if (target !== "workbench") setWorkbenchSubTab(target);
+      setActiveTab("workbench");
+    } else {
+      setActiveTab(target);
+    }
+  };
+
   return (
     <div className="min-h-screen bg-ink-deep text-white flex flex-col starfield-bg selection:bg-accent-lime selection:text-ink-deep">
       {/* Top Navigation */}
       <Navbar
         activeTab={activeTab}
-        setActiveTab={setActiveTab}
+        setActiveTab={handleNavigate}
         sseStatus={sseStatus}
         activityCount={events.length}
       />
@@ -37,20 +55,20 @@ export const App: React.FC = () => {
       <main className="flex-1 max-w-[1720px] w-full mx-auto px-4 sm:px-6 lg:px-10 py-8">
         {activeTab === "home" && (
           <Home
-            onNavigate={setActiveTab}
+            onNavigate={handleNavigate}
             editorConfigs={editorConfigs}
             activeProjectRoot={serverInfo?.project_root}
             toolsCount={serverInfo?.tools_count}
           />
         )}
-        {activeTab === "features" && <FeaturesHub onNavigate={setActiveTab} />}
         {activeTab === "projects" && <ProjectHub />}
-        {activeTab === "console" && <ConsoleRunner />}
-        {activeTab === "explorer" && <FileExplorer />}
+        {activeTab === "workbench" && (
+          <Workbench
+            initialSubTab={workbenchSubTab}
+            onNavigateTab={handleNavigate}
+          />
+        )}
         {activeTab === "activity" && <ActivityFeed events={events} onClear={clearEvents} />}
-        {activeTab === "backups" && <BackupCenter />}
-        {activeTab === "radar" && <DevRadar />}
-        {activeTab === "playground" && <ApiPlayground />}
       </main>
 
       {/* Signature Lime Squiggly Divider */}

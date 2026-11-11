@@ -2,14 +2,8 @@ import React from "react";
 import {
   FolderGit2,
   Activity,
-  ShieldCheck,
-  Radio,
-  Terminal,
   Sparkles,
-  SlidersHorizontal,
-  Cpu,
-  FileCode,
-  Layers,
+  Wrench,
 } from "lucide-react";
 
 interface NavbarProps {
@@ -27,14 +21,9 @@ export const Navbar: React.FC<NavbarProps> = ({
 }) => {
   const tabs = [
     { id: "home", label: "Overview", icon: Sparkles },
-    { id: "features", label: "Features", fullLabel: "Features & Tools (17)", icon: Layers },
-    { id: "projects", label: "Projects", fullLabel: "Projects & Sync", icon: FolderGit2 },
-    { id: "console", label: "Console", fullLabel: "Terminal Runner", icon: Terminal },
-    { id: "explorer", label: "Explorer", fullLabel: "Files & Search", icon: FileCode },
-    { id: "backups", label: "Backups", fullLabel: "Backups & Diffs", icon: ShieldCheck },
-    { id: "radar", label: "Radar", fullLabel: "Dev Radar", icon: Radio },
-    { id: "playground", label: "API Tester", fullLabel: "API Tester", icon: Cpu },
-    { id: "activity", label: "Activity", fullLabel: "Live Stream", icon: Activity, badge: activityCount > 0 ? activityCount : undefined },
+    { id: "projects", label: "Projects & Sync", icon: FolderGit2 },
+    { id: "workbench", label: "Dev Workbench", icon: Wrench },
+    { id: "activity", label: "Activity", icon: Activity, badge: activityCount > 0 ? activityCount : undefined },
   ];
 
   return (
@@ -58,14 +47,14 @@ export const Navbar: React.FC<NavbarProps> = ({
                   MCP
                 </span>
               </div>
-              <p className="text-[10px] font-mono text-on-dark-muted hidden xl:block mt-1 whitespace-nowrap">
+              <p className="text-[10px] font-mono text-on-dark-muted hidden md:block mt-1 whitespace-nowrap">
                 Localhost Dev Tools Bridge
               </p>
             </div>
           </button>
 
-          {/* Navigation Tabs */}
-          <nav className="flex items-center space-x-1 sm:space-x-1.5 overflow-x-auto no-scrollbar py-1 shrink min-w-0">
+          {/* Clean Navigation Tabs */}
+          <nav className="flex items-center space-x-2 sm:space-x-3 overflow-x-auto no-scrollbar py-1 shrink min-w-0">
             {tabs.map((tab) => {
               const Icon = tab.icon;
               const isActive = activeTab === tab.id;
@@ -73,18 +62,14 @@ export const Navbar: React.FC<NavbarProps> = ({
                 <button
                   key={tab.id}
                   onClick={() => setActiveTab(tab.id)}
-                  title={tab.fullLabel || tab.label}
-                  className={`flex items-center space-x-1.5 sm:space-x-2 px-2.5 sm:px-3 py-1.5 rounded-md transition-colors relative whitespace-nowrap shrink-0 text-xs font-bold uppercase tracking-[0.2px] ${
+                  className={`flex items-center space-x-2 px-3.5 py-2 rounded-md transition-all relative whitespace-nowrap shrink-0 text-xs font-bold uppercase tracking-[0.2px] ${
                     isActive
-                      ? "bg-on-dark-faint text-white border-b-2 border-accent-lime"
-                      : "text-on-dark-muted hover:text-white hover:bg-surface-night/60"
+                      ? "bg-white text-ink-deep shadow-sm"
+                      : "text-on-dark-muted hover:text-white hover:bg-surface-night"
                   }`}
                 >
-                  <Icon className={`w-3.5 h-3.5 shrink-0 ${isActive ? "text-accent-lime" : ""}`} />
-                  <span className="hidden sm:inline">
-                    <span className="inline 2xl:hidden">{tab.label}</span>
-                    <span className="hidden 2xl:inline">{tab.fullLabel || tab.label}</span>
-                  </span>
+                  <Icon className={`w-3.5 h-3.5 shrink-0 ${isActive ? "text-ink-deep" : "text-accent-lime"}`} />
+                  <span>{tab.label}</span>
                   {tab.badge !== undefined && (
                     <span className="bg-accent-pink text-ink-deep text-[10px] px-1.5 py-0.2 rounded-full font-bold shrink-0">
                       {tab.badge}
@@ -95,19 +80,18 @@ export const Navbar: React.FC<NavbarProps> = ({
             })}
           </nav>
 
-          {/* Connection Status & Mode Pill */}
-          <div className="flex items-center space-x-2 sm:space-x-3 shrink-0">
-            {/* Quick Switch Button */}
+          {/* Right Action & Status Area */}
+          <div className="flex items-center space-x-3 shrink-0">
+            {/* Quick Action Button */}
             <button
-              onClick={() => setActiveTab(activeTab === "home" ? "projects" : "home")}
-              className="hidden xl:flex items-center space-x-1.5 bg-surface-night hover:bg-surface-card border border-hairline-violet px-3 py-1.5 rounded text-xs font-mono text-on-dark-muted hover:text-white transition-colors shrink-0 whitespace-nowrap"
+              onClick={() => setActiveTab("projects")}
+              className="hidden lg:flex btn-cap bg-surface-night hover:bg-white hover:text-ink-deep border border-hairline-violet text-white px-3.5 py-1.5 rounded-md text-xs font-bold transition-all shadow-sm items-center space-x-1.5"
             >
-              <SlidersHorizontal className="w-3.5 h-3.5 text-accent-pink" />
-              <span>{activeTab === "home" ? "Console View" : "Overview"}</span>
+              <span>Connect Editors</span>
             </button>
 
-            {/* SSE Status Pill */}
-            <div className="flex items-center space-x-1.5 bg-surface-night px-2.5 py-1.5 rounded-[4px] border border-hairline-violet text-xs font-mono shrink-0 whitespace-nowrap">
+            {/* Connection Status Indicator */}
+            <div className="flex items-center space-x-2 bg-surface-night px-3 py-1.5 rounded-md border border-hairline-violet text-xs font-mono shrink-0">
               <span
                 className={`w-2 h-2 rounded-full shrink-0 ${
                   sseStatus === "connected"
