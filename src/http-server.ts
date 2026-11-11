@@ -25,11 +25,26 @@ import {
   loadProjects,
   saveProjects,
   switchActiveProject,
+  updateProject,
+  deleteProject,
   generateEditorConfig,
 } from "./core/project-manager.js";
+import {
+  getAllEditorStatuses,
+  syncProjectToEditors,
+  SupportedEditor,
+} from "./core/editor-sync.js";
 import { scanDevServersTool } from "./tools/radar.js";
-import { restoreBackupTool } from "./tools/files.js";
-import { relativeBackupPath } from "./utils/backup.js";
+import {
+  restoreBackupTool,
+  readFileTool,
+  editFileTool,
+  listFilesTool,
+} from "./tools/files.js";
+import { getGitStatusTool, getGitDiffTool } from "./tools/git.js";
+import { runCommandTool } from "./tools/commands.js";
+import { searchFilesTool } from "./tools/search.js";
+import { backupFile, relativeBackupPath } from "./utils/backup.js";
 import { resolveProjectPath } from "./utils/fs.js";
 
 // Initialize all MCP tools
@@ -208,12 +223,15 @@ app.get("/api/projects", (_req: Request, res: Response) => {
 });
 
 app.post("/api/projects/switch", (req: Request, res: Response) => {
-  const { nameOrPath } = req.body;
+  const { nameOrPath, syncEditors, targetEditor } = req.body;
   if (!nameOrPath) {
     res.status(400).json({ error: "Missing nameOrPath" });
     return;
   }
-  const result = switchActiveProject(nameOrPath);
+  const result = switchActiveProject(nameOrPath, {
+    syncEditors: Boolean(syncEditors),
+    targetEditor: targetEditor as any,
+  });
   if (!result.success) {
     res.status(404).json({ error: result.error });
     return;
@@ -222,6 +240,78 @@ app.post("/api/projects/switch", (req: Request, res: Response) => {
     success: true,
     activeProject: result.project,
     activeRoot: getProjectRoot(),
+    editorSync: result.editorSync,
+  });
+});
+
+app.post("/api/projects/update", (req: Request, res: Response) => {
+  const { originalName, name, root, allowed_ports, allowed_commands } = req.body;
+  if (!originalName) {
+    res.status(400).json({ error: "originalName is required" });
+    return;
+  }
+  const result = updateProject(originalName, {
+    name,
+    root,
+    allowed_ports,
+    allowed_commands,
+  });
+  if (!result.success) {
+    res.status(400).json({ error: result.error });
+    return;
+  }
+  res.json(result);
+});
+
+app.post("/api/projects/delete", (req: Request, res: Response) => {
+  const { name } = req.body;
+  if (!name) {
+    res.status(400).json({ error: "name is required" });
+    return;
+  }
+  const result = deleteProject(name);
+  if (!result.success) {
+    res.status(404).json({ error: result.error });
+    return;
+  }
+  res.json(result);
+});
+
+// REST API for Dashboard: Editor configuration & live sync
+app.get("/api/editors/status", (_req: Request, res: Response) => {
+  res.json({
+    editors: getAllEditorStatuses(),
+    currentRoot: getProjectRoot(),
+  });
+});
+
+app.post("/api/editors/sync", (req: Request, res: Response) => {
+  const { projectNameOrPath, targetEditor } = req.body;
+  const projects = loadProjects();
+  let project = projectNameOrPath
+    ? projects.find(
+        (p) =>
+          p.name.toLowerCase() === projectNameOrPath.toLowerCase() ||
+          path.resolve(p.root) === path.resolve(projectNameOrPath)
+      )
+    : projects.find((p) => path.resolve(p.root) === path.resolve(getProjectRoot()));
+
+  if (!project) {
+    project = {
+      name: path.basename(getProjectRoot()),
+      root: getProjectRoot(),
+      allowed_ports: getAllowedPorts().join(", "),
+      allowed_commands: getAllowedCommands().join(", "),
+    };
+  }
+
+  const result = syncProjectToEditors(project, (targetEditor as any) || "all");
+  res.json({
+    success: result.updated.length > 0 || (result.failed.length === 0 && result.skipped.length > 0),
+    project,
+    updated: result.updated,
+    skipped: result.skipped,
+    failed: result.failed,
   });
 });
 
@@ -332,6 +422,188 @@ app.post("/api/backups/restore", async (req: Request, res: Response) => {
     success: !result.isError,
     result: output,
   });
+});
+
+app.post("/api/backups/create", (req: Request, res: Response) => {
+  const { filepath } = req.body;
+  if (!filepath) {
+    res.status(400).json({ error: "filepath is required" });
+    return;
+  }
+  try {
+    const fullPath = resolveProjectPath(filepath);
+    if (!fs.existsSync(fullPath)) {
+      res.status(404).json({ error: `File not found: ${filepath}` });
+      return;
+    }
+    const backupPath = backupFile(fullPath);
+    res.json({
+      success: true,
+      backupPath,
+      filename: path.basename(backupPath),
+    });
+  } catch (e) {
+    res.status(500).json({ error: (e as Error).message });
+  }
+});
+
+app.delete("/api/backups", (req: Request, res: Response) => {
+  const filename = (req.query.filename as string) || req.body?.filename;
+  if (!filename) {
+    res.status(400).json({ error: "filename parameter is required" });
+    return;
+  }
+  const backupDir = getBackupDir();
+  const filePath = path.join(backupDir, path.basename(filename));
+  if (!fs.existsSync(filePath)) {
+    res.status(404).json({ error: "Backup file not found" });
+    return;
+  }
+  try {
+    fs.unlinkSync(filePath);
+    res.json({ success: true, message: `Backup ${path.basename(filename)} deleted` });
+  } catch (e) {
+    res.status(500).json({ error: (e as Error).message });
+  }
+});
+
+// REST API for Dashboard: Git operations
+app.get("/api/git/status", async (_req: Request, res: Response) => {
+  try {
+    const result = await getGitStatusTool.handler({});
+    res.json({
+      success: !result.isError,
+      output: result.content.map((c) => c.text).join("\n"),
+      metadata: result.metadata,
+    });
+  } catch (e) {
+    res.status(500).json({ error: (e as Error).message });
+  }
+});
+
+app.get("/api/git/diff", async (req: Request, res: Response) => {
+  try {
+    const filepath = req.query.file as string | undefined;
+    const staged = req.query.staged === "true";
+    const result = await getGitDiffTool.handler({ filepath, staged });
+    res.json({
+      success: !result.isError,
+      diff: result.content.map((c) => c.text).join("\n"),
+      file: filepath || "all",
+      staged,
+    });
+  } catch (e) {
+    res.status(500).json({ error: (e as Error).message });
+  }
+});
+
+// REST API for Dashboard: Terminal & Command Execution
+app.post("/api/commands/run", async (req: Request, res: Response) => {
+  const { command, timeout_ms, cwd } = req.body;
+  if (!command) {
+    res.status(400).json({ error: "command is required" });
+    return;
+  }
+  try {
+    const result = await runCommandTool.handler({
+      command,
+      timeout_ms: typeof timeout_ms === "number" ? timeout_ms : 30000,
+      cwd,
+    });
+    res.json({
+      success: !result.isError,
+      output: result.content.map((c) => c.text).join("\n"),
+      metadata: result.metadata,
+    });
+  } catch (e) {
+    res.status(500).json({ error: (e as Error).message });
+  }
+});
+
+// REST API for Dashboard: Filesystem Exploration & Safe Editing
+app.get("/api/files/tree", async (req: Request, res: Response) => {
+  try {
+    const directory = (req.query.subpath as string) || (req.query.directory as string) || ".";
+    const depth = req.query.depth ? Number(req.query.depth) : 3;
+    const result = await listFilesTool.handler({ directory, depth });
+    res.json({
+      success: !result.isError,
+      files: result.metadata?.files || [],
+      directories: result.metadata?.directories || [],
+      output: result.content.map((c) => c.text).join("\n"),
+    });
+  } catch (e) {
+    res.status(500).json({ error: (e as Error).message });
+  }
+});
+
+app.get("/api/files/read", async (req: Request, res: Response) => {
+  const filepath = req.query.filepath as string;
+  if (!filepath) {
+    res.status(400).json({ error: "filepath query parameter is required" });
+    return;
+  }
+  try {
+    const result = await readFileTool.handler({
+      filepath,
+      start_line: req.query.start_line ? Number(req.query.start_line) : undefined,
+      end_line: req.query.end_line ? Number(req.query.end_line) : undefined,
+    });
+    res.json({
+      success: !result.isError,
+      content: result.content.map((c) => c.text).join("\n"),
+      metadata: result.metadata,
+    });
+  } catch (e) {
+    res.status(500).json({ error: (e as Error).message });
+  }
+});
+
+app.post("/api/files/save", async (req: Request, res: Response) => {
+  const { filepath, content, create_if_missing } = req.body;
+  if (!filepath || content === undefined) {
+    res.status(400).json({ error: "filepath and content are required" });
+    return;
+  }
+  try {
+    const result = await editFileTool.handler({
+      filepath,
+      content,
+      create_if_missing: Boolean(create_if_missing),
+    });
+    res.json({
+      success: !result.isError,
+      output: result.content.map((c) => c.text).join("\n"),
+      metadata: result.metadata,
+    });
+  } catch (e) {
+    res.status(500).json({ error: (e as Error).message });
+  }
+});
+
+// REST API for Dashboard: Code Search
+app.get("/api/search/code", async (req: Request, res: Response) => {
+  const query = req.query.query as string;
+  if (!query) {
+    res.status(400).json({ error: "query query parameter is required" });
+    return;
+  }
+  try {
+    const result = await searchFilesTool.handler({
+      query,
+      directory: (req.query.directory as string) || (req.query.path as string) || ".",
+      case_sensitive: req.query.case_sensitive === "true",
+      is_regex: req.query.is_regex === "true",
+      file_pattern: req.query.file_pattern as string | undefined,
+    });
+    res.json({
+      success: !result.isError,
+      output: result.content.map((c) => c.text).join("\n"),
+      metadata: result.metadata,
+    });
+  } catch (e) {
+    res.status(500).json({ error: (e as Error).message });
+  }
 });
 
 // REST API for Dashboard: Dev radar scan
