@@ -1,3 +1,7 @@
+<img width="2822" height="1564" alt="overview" src="https://github.com/user-attachments/assets/6a2f4db8-8dd3-4049-9e14-6db8602ff407" />
+
+---
+
 # universal-dev-mcp
 
 A universal MCP (Model Context Protocol) server and real-time developer platform that bridges AI coding tools to your local development environment. Connect Claude Desktop, Cursor, Windsurf, Zed, Gemini, ChatGPT, or any MCP-compatible tool to your localhost dev server — view pages, call APIs, read and edit source files, run commands, inspect git status, compare diffs, and switch between projects — complete with an embedded real-time Web UI Dashboard.
@@ -28,13 +32,13 @@ A universal MCP (Model Context Protocol) server and real-time developer platform
 
 ## Features
 
-- **⚡ 17 Powerful MCP Tools**: Comprehensive toolset covering project discovery, file operations, regex/glob search, allowlisted shell commands, parallel dev server port scanning, DOM/meta scraping, API testing, structured Git status, diff inspection, and automated backup rollback.
-- **🖥️ Embedded Web UI Dashboard**: Modern full-width web application served at `http://localhost:3333/` featuring Project Hub, Live AI Activity Feed, Visual Backup Diff Viewer, Dev Server Radar, and API Playground.
-- **📡 Real-Time Telemetry & Observability**: Server-Sent Events (SSE) stream broadcasting every AI tool call, arguments, execution duration, and diffs as they happen on your machine.
-- **🛡️ Auto-Backups & 1-Click Rollback**: Automatic timestamped backups (`.mcp-backups/`) created before any file modification or deletion, with instant restore via MCP tool, Web UI, or REST API.
-- **🔄 Multi-Editor Switcher (`mcp-switch`)**: CLI and Web UI project switching with automatic config synchronization across Claude Desktop, Cursor (`mcp.json`), Windsurf (`mcp_config.json`), and Zed (`settings.json`).
-- **🔒 Enterprise Security Guardrails**: Strict port allowlists, command allowlists, directory boundary confinement, path traversal guards, and shell injection prevention.
-- **🔌 Dual Transports**: Native MCP stdio (JSON-RPC) for code editors, plus HTTP/REST and OpenAI-compatible endpoints for Gemini, ChatGPT, or web applications.
+- ** 17 Powerful MCP Tools**: Comprehensive toolset covering project discovery, file operations, regex/glob search, allowlisted shell commands, parallel dev server port scanning, DOM/meta scraping, API testing, structured Git status, diff inspection, and automated backup rollback.
+- ** Embedded Web UI Dashboard**: Modern full-width web application served at `http://localhost:3333/` featuring Project Hub, Live AI Activity Feed, Visual Backup Diff Viewer, Dev Server Radar, and API Playground.
+- ** Real-Time Telemetry & Observability**: Server-Sent Events (SSE) stream broadcasting every AI tool call, arguments, execution duration, and diffs as they happen on your machine.
+- ** Auto-Backups & 1-Click Rollback**: Automatic timestamped backups (`.mcp-backups/`) created before any file modification or deletion, with instant restore via MCP tool, Web UI, or REST API.
+- ** Multi-Editor Switcher (`mcp-switch`)**: CLI and Web UI project switching with automatic config synchronization across Claude Desktop, Cursor (`mcp.json`), Windsurf (`mcp_config.json`), and Zed (`settings.json`).
+- ** Enterprise Security Guardrails**: Strict port allowlists, command allowlists, directory boundary confinement, path traversal guards, and shell injection prevention.
+- ** Dual Transports**: Native MCP stdio (JSON-RPC) for code editors, plus HTTP/REST and OpenAI-compatible endpoints for Gemini, ChatGPT, or web applications.
 
 ---
 
@@ -48,12 +52,12 @@ npm run start:http
 
 Open **`http://localhost:3333/`** in your browser.
 
-- **🏠 Home Overview**: Hero stage showcasing system status, active project root, connected editors, and telemetry statistics.
-- **📁 Project Hub**: Multi-column command center displaying active Git status (branch, modified/untracked files, commit history) and a 1-click project switcher across all configured workspaces.
-- **⚡ Live AI Activity Feed**: Real-time ticker streaming every tool call executed by Claude, Cursor, or Gemini, complete with arguments, duration, and output logs via SSE.
-- **🛡️ Backup Center**: Visual side-by-side diff viewer comparing current file versions against timestamped snapshots with a 1-click "Restore Version" button.
-- **📡 Dev Server Radar**: Parallel port scanner detecting running localhost servers (Vite, Next.js, Express, Django, etc.), response latency, and DOM page inspection.
-- **🧪 API & Command Workbench**: Interactive playground to test local REST endpoints with custom headers/JSON bodies, or execute allowlisted shell commands with formatted terminal outputs.
+- ** Home Overview**: Hero stage showcasing system status, active project root, connected editors, and telemetry statistics.
+- ** Project Hub**: Multi-column command center displaying active Git status (branch, modified/untracked files, commit history) and a 1-click project switcher across all configured workspaces.
+- ** Live AI Activity Feed**: Real-time ticker streaming every tool call executed by Claude, Cursor, or Gemini, complete with arguments, duration, and output logs via SSE.
+- ** Backup Center**: Visual side-by-side diff viewer comparing current file versions against timestamped snapshots with a 1-click "Restore Version" button.
+- ** Dev Server Radar**: Parallel port scanner detecting running localhost servers (Vite, Next.js, Express, Django, etc.), response latency, and DOM page inspection.
+- ** API & Command Workbench**: Interactive playground to test local REST endpoints with custom headers/JSON bodies, or execute allowlisted shell commands with formatted terminal outputs.
 
 ---
 
@@ -506,6 +510,27 @@ async function main() {
 
 main();
 ```
+
+---
+
+## UI Screenshots
+
+### Home
+
+<img width="2823" height="1542" alt="home" src="https://github.com/user-attachments/assets/1f972566-a4b3-48d5-80bf-b6ad2b047eb4" />
+
+### Project
+
+<img width="2811" height="1544" alt="project" src="https://github.com/user-attachments/assets/f919d1f9-9694-4a0d-9bb4-ed4793fdaca1" />
+
+### Dev WorkBench
+
+<img width="2813" height="1556" alt="dev_workbench" src="https://github.com/user-attachments/assets/6bb6ab24-9f9c-4efb-947f-859f0e04711a" />
+
+### Add a Project
+
+<img width="2819" height="1557" alt="add_project" src="https://github.com/user-attachments/assets/055c6abc-9768-42ff-b194-721ec1a03449" />
+
 
 ---
 
